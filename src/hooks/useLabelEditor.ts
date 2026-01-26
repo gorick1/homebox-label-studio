@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { Label, LabelElement, LabelSize, TextElement, QRCodeElement, BarcodeElement, Position, Size } from '@/types/label';
+import type { Label, LabelElement, LabelSize, TextElement, QRCodeElement, BarcodeElement, Position, Size, HomeboxItem } from '@/types/label';
 import { LABEL_SIZES } from '@/types/label';
+import { substitutePlaceholders } from '@/lib/dymoFormat';
 
 const generateId = () => crypto.randomUUID();
 
@@ -65,8 +66,43 @@ export function useLabelEditor(initialLabel?: Label) {
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [gridSize, setGridSize] = useState(0.125); // 1/8 inch
+  const [previewItem, setPreviewItem] = useState<HomeboxItem | null>(null);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const label = history.present;
+
+  // Create preview data map from the selected item
+  const previewData = useMemo(() => {
+    if (!previewItem) return null;
+    return {
+      '{item_name}': previewItem.name,
+      '{location}': previewItem.location.path,
+      '{quantity}': previewItem.quantity.toString(),
+      '{item_id}': previewItem.id,
+      '{asset_id}': previewItem.assetId,
+      '{description}': previewItem.description,
+      '{notes}': previewItem.notes,
+    };
+  }, [previewItem]);
+
+  // Get display content for an element (with or without substitution)
+  const getDisplayContent = useCallback((element: LabelElement): string => {
+    if (!isPreviewMode || !previewData) {
+      if (element.type === 'text') return element.content;
+      if (element.type === 'qrcode') return element.data;
+      if (element.type === 'barcode') return element.data;
+      return '';
+    }
+    
+    if (element.type === 'text') {
+      return substitutePlaceholders(element.content, previewData);
+    } else if (element.type === 'qrcode') {
+      return substitutePlaceholders(element.data, previewData);
+    } else if (element.type === 'barcode') {
+      return substitutePlaceholders(element.data, previewData);
+    }
+    return '';
+  }, [isPreviewMode, previewData]);
 
   const selectedElement = useMemo(() => {
     return label.elements.find(el => el.id === selectedElementId) || null;
@@ -294,6 +330,14 @@ export function useLabelEditor(initialLabel?: Label) {
     setSnapToGrid,
     gridSize,
     setGridSize,
+    
+    // Preview mode
+    previewItem,
+    setPreviewItem,
+    isPreviewMode,
+    setIsPreviewMode,
+    previewData,
+    getDisplayContent,
   };
 }
 

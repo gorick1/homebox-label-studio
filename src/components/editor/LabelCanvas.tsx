@@ -34,6 +34,8 @@ export default function LabelCanvas() {
     zoom,
     showGrid,
     gridSize,
+    isPreviewMode,
+    getDisplayContent,
   } = useLabelEditorContext();
 
   const [isDragging, setIsDragging] = useState(false);
@@ -103,12 +105,13 @@ export default function LabelCanvas() {
       const height = inchesToPixels(element.size.height);
 
       if (element.type === 'text') {
+        const displayContent = getDisplayContent(element);
         ctx.fillStyle = `rgba(${element.color.r}, ${element.color.g}, ${element.color.b}, ${element.color.a / 255})`;
         ctx.font = `${element.font.italic ? 'italic ' : ''}${element.font.bold ? 'bold ' : ''}${element.font.size * scale}px ${element.font.family}`;
         ctx.textBaseline = 'top';
         
         // Word wrap text
-        const words = element.content.split(' ');
+        const words = displayContent.split(' ');
         let line = '';
         let lineY = y;
         const lineHeight = element.font.size * scale * 1.2;
@@ -158,6 +161,7 @@ export default function LabelCanvas() {
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, width, height);
       } else if (element.type === 'barcode') {
+        const displayData = getDisplayContent(element);
         // Draw barcode background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(x, y, width, height);
@@ -168,7 +172,7 @@ export default function LabelCanvas() {
         const barWidth = width / 50;
         
         // Generate a pseudo-random but consistent pattern based on data
-        const data = element.data || 'barcode';
+        const data = displayData || 'barcode';
         for (let i = 0; i < 50; i++) {
           const charCode = data.charCodeAt(i % data.length) || 65;
           const shouldDraw = (charCode + i) % 3 !== 0;
@@ -190,7 +194,7 @@ export default function LabelCanvas() {
           ctx.font = `${10 * scale}px monospace`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
-          ctx.fillText(element.data, x + width / 2, y + height);
+          ctx.fillText(displayData, x + width / 2, y + height);
           ctx.textAlign = 'left';
         }
 
@@ -229,7 +233,7 @@ export default function LabelCanvas() {
         });
       }
     });
-  }, [label, selectedElementId, canvasWidth, canvasHeight, showGrid, gridSize, inchesToPixels, scale]);
+  }, [label, selectedElementId, canvasWidth, canvasHeight, showGrid, gridSize, inchesToPixels, scale, isPreviewMode, getDisplayContent]);
 
   const getElementAtPoint = useCallback((x: number, y: number): LabelElement | null => {
     const posInches: Position = {
