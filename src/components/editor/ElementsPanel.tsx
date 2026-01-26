@@ -132,11 +132,10 @@ export default function ElementsPanel() {
           variant="outline"
           size="sm"
           className="w-full gap-1.5"
-          disabled
-          title="Coming soon"
+          onClick={() => addElement('barcode')}
         >
           <Barcode className="h-4 w-4" />
-          Barcode (Coming Soon)
+          Barcode
         </Button>
       </div>
 
@@ -173,6 +172,15 @@ export default function ElementsPanel() {
           >
             <QrCode className="h-3.5 w-3.5" />
             <span className="text-xs">QR to Item</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 h-8"
+            onClick={() => addElement('barcode')}
+          >
+            <Barcode className="h-3.5 w-3.5" />
+            <span className="text-xs">Asset ID Barcode</span>
           </Button>
         </div>
       </div>

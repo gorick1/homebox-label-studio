@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { Label, LabelElement, LabelSize, TextElement, QRCodeElement, Position, Size } from '@/types/label';
+import type { Label, LabelElement, LabelSize, TextElement, QRCodeElement, BarcodeElement, Position, Size } from '@/types/label';
 import { LABEL_SIZES } from '@/types/label';
 
 const generateId = () => crypto.randomUUID();
@@ -33,6 +33,16 @@ const DEFAULT_QRCODE_ELEMENT: Omit<QRCodeElement, 'id' | 'name' | 'position'> = 
   type: 'qrcode',
   data: 'https://homebox.garrettorick.com/item/{item_id}',
   size: { width: 0.75, height: 0.75 },
+  locked: false,
+  visible: true,
+};
+
+const DEFAULT_BARCODE_ELEMENT: Omit<BarcodeElement, 'id' | 'name' | 'position'> = {
+  type: 'barcode',
+  data: '{asset_id}',
+  format: 'code128',
+  showText: true,
+  size: { width: 1.5, height: 0.4 },
   locked: false,
   visible: true,
 };
@@ -99,7 +109,7 @@ export function useLabelEditor(initialLabel?: Label) {
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
 
-  const addElement = useCallback((type: 'text' | 'qrcode') => {
+  const addElement = useCallback((type: 'text' | 'qrcode' | 'barcode') => {
     const id = generateId();
     const position: Position = { x: 0.1, y: 0.1 };
     
@@ -112,11 +122,18 @@ export function useLabelEditor(initialLabel?: Label) {
         name: `Text ${label.elements.filter(e => e.type === 'text').length + 1}`,
         position,
       };
-    } else {
+    } else if (type === 'qrcode') {
       newElement = {
         ...DEFAULT_QRCODE_ELEMENT,
         id,
         name: `QR Code ${label.elements.filter(e => e.type === 'qrcode').length + 1}`,
+        position,
+      };
+    } else {
+      newElement = {
+        ...DEFAULT_BARCODE_ELEMENT,
+        id,
+        name: `Barcode ${label.elements.filter(e => e.type === 'barcode').length + 1}`,
         position,
       };
     }

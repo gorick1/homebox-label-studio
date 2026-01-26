@@ -1,4 +1,4 @@
-import type { Label, LabelElement, TextElement, QRCodeElement, Color } from '@/types/label';
+import type { Label, LabelElement, TextElement, QRCodeElement, BarcodeElement, Color } from '@/types/label';
 
 // Twips conversion: 1 inch = 1440 twips
 const TWIPS_PER_INCH = 1440;
@@ -55,6 +55,27 @@ function qrCodeElementToXml(element: QRCodeElement): string {
     </QRCodeObject>`;
 }
 
+const BARCODE_FORMAT_MAP: Record<BarcodeElement['format'], string> = {
+  code128: 'Code128Auto',
+  code39: 'Code39',
+  ean13: 'Ean13',
+};
+
+function barcodeElementToXml(element: BarcodeElement): string {
+  const x = inchesToTwips(element.position.x);
+  const y = inchesToTwips(element.position.y);
+  const width = inchesToTwips(element.size.width);
+  const height = inchesToTwips(element.size.height);
+  const format = BARCODE_FORMAT_MAP[element.format] || 'Code128Auto';
+
+  return `
+    <BarcodeObject name="${escapeXml(element.name)}" x="${x}" y="${y}" width="${width}" height="${height}">
+      <Format>${format}</Format>
+      <String>${escapeXml(element.data)}</String>
+      <ShowText>${element.showText}</ShowText>
+    </BarcodeObject>`;
+}
+
 function elementToXml(element: LabelElement): string {
   switch (element.type) {
     case 'text':
@@ -62,8 +83,7 @@ function elementToXml(element: LabelElement): string {
     case 'qrcode':
       return qrCodeElementToXml(element);
     case 'barcode':
-      // Placeholder for barcode support
-      return `<!-- Barcode: ${escapeXml(element.name)} -->`;
+      return barcodeElementToXml(element);
     case 'rectangle':
     case 'line':
       // Shapes are for visual design, not typically exported to DYMO
