@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Bold, Italic, Type, QrCode, Barcode, Trash2, Copy, Tag } from 'lucide-react';
-import { FONT_FAMILIES, PLACEHOLDERS, type TextElement, type QRCodeElement } from '@/types/label';
+import { FONT_FAMILIES, PLACEHOLDERS, type TextElement, type QRCodeElement, type BarcodeElement } from '@/types/label';
 import { containsPlaceholders } from '@/lib/dymoFormat';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -36,14 +36,18 @@ export default function PropertiesPanel() {
 
   const isText = selectedElement.type === 'text';
   const isQRCode = selectedElement.type === 'qrcode';
+  const isBarcode = selectedElement.type === 'barcode';
   const textElement = isText ? (selectedElement as TextElement) : null;
   const qrElement = isQRCode ? (selectedElement as QRCodeElement) : null;
+  const barcodeElement = isBarcode ? (selectedElement as BarcodeElement) : null;
 
   const hasPlaceholders = isText 
     ? containsPlaceholders(textElement!.content)
     : isQRCode 
       ? containsPlaceholders(qrElement!.data)
-      : false;
+      : isBarcode
+        ? containsPlaceholders(barcodeElement!.data)
+        : false;
 
   const insertPlaceholder = (placeholder: string) => {
     if (isText && textElement) {
@@ -53,6 +57,10 @@ export default function PropertiesPanel() {
     } else if (isQRCode && qrElement) {
       updateElement(selectedElementId, {
         data: qrElement.data + placeholder,
+      });
+    } else if (isBarcode && barcodeElement) {
+      updateElement(selectedElementId, {
+        data: barcodeElement.data + placeholder,
       });
     }
   };
@@ -283,6 +291,74 @@ export default function PropertiesPanel() {
               Use placeholders like {'{item_id}'} for dynamic QR codes
             </p>
           </div>
+        )}
+
+        {/* Barcode properties */}
+        {isBarcode && barcodeElement && (
+          <>
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Barcode Format</h3>
+              <Select
+                value={barcodeElement.format}
+                onValueChange={(value: BarcodeElement['format']) => updateElement(selectedElementId, { format: value })}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="code128">Code 128 (Recommended)</SelectItem>
+                  <SelectItem value="code39">Code 39</SelectItem>
+                  <SelectItem value="ean13">EAN-13</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Barcode Data</h3>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1">
+                      <Tag className="h-3 w-3" />
+                      <span className="text-xs">Insert</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="end">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Placeholders</p>
+                      {PLACEHOLDERS.map((p) => (
+                        <button
+                          key={p.key}
+                          onClick={() => insertPlaceholder(p.key)}
+                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded-sm"
+                        >
+                          <span className="font-mono text-xs">{p.key}</span>
+                          <span className="block text-xs text-muted-foreground">{p.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Textarea
+                value={barcodeElement.data}
+                onChange={(e) => updateElement(selectedElementId, { data: e.target.value })}
+                className="min-h-[60px] text-sm font-mono"
+                placeholder="Enter barcode data..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Use {'{asset_id}'} for scannable asset tracking
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Show Text Below</Label>
+              <Switch
+                checked={barcodeElement.showText}
+                onCheckedChange={(checked) => updateElement(selectedElementId, { showText: checked })}
+              />
+            </div>
+          </>
         )}
 
         <Separator />

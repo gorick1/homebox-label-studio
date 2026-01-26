@@ -52,6 +52,7 @@ export interface BarcodeElement extends BaseLabelElement {
   type: 'barcode';
   data: string;
   format: 'code128' | 'code39' | 'ean13';
+  showText: boolean;
 }
 
 export interface RectangleElement extends BaseLabelElement {

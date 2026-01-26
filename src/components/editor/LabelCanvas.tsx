@@ -157,6 +157,46 @@ export default function LabelCanvas() {
         ctx.strokeStyle = '#d1d5db';
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, width, height);
+      } else if (element.type === 'barcode') {
+        // Draw barcode background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, width, height);
+        
+        // Draw barcode lines (Code128-style pattern)
+        ctx.fillStyle = '#1f2937';
+        const barcodeHeight = element.showText ? height * 0.75 : height;
+        const barWidth = width / 50;
+        
+        // Generate a pseudo-random but consistent pattern based on data
+        const data = element.data || 'barcode';
+        for (let i = 0; i < 50; i++) {
+          const charCode = data.charCodeAt(i % data.length) || 65;
+          const shouldDraw = (charCode + i) % 3 !== 0;
+          const isThick = (charCode + i) % 5 === 0;
+          
+          if (shouldDraw) {
+            ctx.fillRect(
+              x + i * barWidth, 
+              y, 
+              isThick ? barWidth * 1.5 : barWidth * 0.8, 
+              barcodeHeight
+            );
+          }
+        }
+        
+        // Draw data text below barcode if showText is true
+        if (element.showText) {
+          ctx.fillStyle = '#1f2937';
+          ctx.font = `${10 * scale}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(element.data, x + width / 2, y + height);
+          ctx.textAlign = 'left';
+        }
+
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, height);
       }
 
       // Draw selection border
