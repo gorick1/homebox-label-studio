@@ -1,0 +1,330 @@
+import { useState, useEffect } from 'react';
+import { useLabelEditorContext } from '@/contexts/LabelEditorContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  FolderOpen, 
+  Save, 
+  Star, 
+  StarOff, 
+  Trash2, 
+  FileText,
+  Plus,
+  Search,
+  Check,
+  Loader2,
+} from 'lucide-react';
+import { getTemplates, saveTemplate, deleteTemplate, setDefaultTemplate } from '@/lib/api';
+import type { LabelTemplate as TemplateType } from '@/types/label';
+import { useToast } from '@/hooks/use-toast';
+
+// Mock templates for development (when API isn't available)
+const MOCK_TEMPLATES: TemplateType[] = [
+  {
+    id: '1',
+    name: 'Standard Item Label',
+    description: 'Basic label with item name and QR code',
+    isDefault: true,
+    isFavorite: false,
+    label: {
+      id: 'template-1',
+      name: 'Standard Item Label',
+      size: { id: 'dymo-30334', name: 'DYMO 30334', width: 2.25, height: 1.25 },
+      elements: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export default function TemplatesPanel() {
+  const { label, loadLabel } = useLabelEditorContext();
+  const { toast } = useToast();
+  
+  const [templates, setTemplates] = useState<TemplateType[]>(MOCK_TEMPLATES);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
+
+  // Load templates from API
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getTemplates();
+        if (data.length > 0) {
+          setTemplates(data as TemplateType[]);
+        }
+      } catch (error) {
+        // Use mock templates if API fails
+        console.log('Using mock templates');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  const filteredTemplates = templates.filter(t =>
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSaveTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a name for the template",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const newTemplate: TemplateType = {
+        id: crypto.randomUUID(),
+        name: newTemplateName,
+        description: newTemplateDescription,
+        label: { ...label },
+        isDefault: false,
+        isFavorite: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Try to save to API
+      try {
+        await saveTemplate(newTemplate);
+      } catch {
+        // If API fails, just add locally
+      }
+
+      setTemplates(prev => [...prev, newTemplate]);
+      setSaveDialogOpen(false);
+      setNewTemplateName('');
+      setNewTemplateDescription('');
+      
+      toast({
+        title: "Template saved",
+        description: `"${newTemplateName}" has been saved.`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLoadTemplate = (template: TemplateType) => {
+    loadLabel(template.label);
+    toast({
+      title: "Template loaded",
+      description: `"${template.name}" is now active.`,
+    });
+  };
+
+  const handleSetDefault = async (template: TemplateType) => {
+    try {
+      await setDefaultTemplate(template.id);
+    } catch {
+      // Continue even if API fails
+    }
+
+    setTemplates(prev => prev.map(t => ({
+      ...t,
+      isDefault: t.id === template.id,
+    })));
+
+    toast({
+      title: "Default template set",
+      description: `"${template.name}" will be used for automatic printing.`,
+    });
+  };
+
+  const handleDeleteTemplate = async (template: TemplateType) => {
+    try {
+      await deleteTemplate(template.id);
+    } catch {
+      // Continue even if API fails
+    }
+
+    setTemplates(prev => prev.filter(t => t.id !== template.id));
+    
+    toast({
+      title: "Template deleted",
+      description: `"${template.name}" has been removed.`,
+    });
+  };
+
+  const toggleFavorite = (template: TemplateType) => {
+    setTemplates(prev => prev.map(t => 
+      t.id === template.id ? { ...t, isFavorite: !t.isFavorite } : t
+    ));
+  };
+
+  return (
+    <div className="flex-1 border-t flex flex-col min-h-0">
+      {/* Header */}
+      <div className="p-3 border-b">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold text-sm">Templates</h2>
+          <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save as Template</DialogTitle>
+                <DialogDescription>
+                  Save your current label design as a reusable template.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Template Name</Label>
+                  <Input
+                    value={newTemplateName}
+                    onChange={(e) => setNewTemplateName(e.target.value)}
+                    placeholder="My Label Template"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description (optional)</Label>
+                  <Textarea
+                    value={newTemplateDescription}
+                    onChange={(e) => setNewTemplateDescription(e.target.value)}
+                    placeholder="A brief description of this template..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveTemplate} disabled={isSaving}>
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save Template
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search templates..."
+            className="h-8 pl-8 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Templates List */}
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredTemplates.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              <p>No templates found</p>
+              <p className="text-xs mt-1">Save your first template above</p>
+            </div>
+          ) : (
+            filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className="group p-2 rounded-md hover:bg-muted cursor-pointer transition-colors"
+                onClick={() => handleLoadTemplate(template)}
+              >
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">
+                        {template.name}
+                      </span>
+                      {template.isDefault && (
+                        <Badge variant="secondary" className="text-xs h-5">
+                          Default
+                        </Badge>
+                      )}
+                    </div>
+                    {template.description && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {template.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(template);
+                      }}
+                    >
+                      {template.isFavorite ? (
+                        <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                      ) : (
+                        <StarOff className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    {!template.isDefault && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetDefault(template);
+                        }}
+                        title="Set as default"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTemplate(template);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
