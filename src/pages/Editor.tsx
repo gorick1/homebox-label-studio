@@ -5,9 +5,12 @@ import LabelCanvas from '@/components/editor/LabelCanvas';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import TemplatesPanel from '@/components/editor/TemplatesPanel';
 
+// Key to force remount on HMR issues
+const EDITOR_KEY = 'label-editor-v1';
+
 export default function EditorPage() {
   return (
-    <LabelEditorProvider>
+    <LabelEditorProvider key={EDITOR_KEY}>
       <div className="h-screen flex flex-col bg-background">
         <EditorToolbar />
         
