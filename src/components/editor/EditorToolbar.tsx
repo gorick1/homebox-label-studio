@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -17,18 +16,18 @@ import {
   Grid3X3,
   Download,
   Printer,
-  Save,
-  FolderOpen,
   Settings,
   LogOut,
   User,
-  FileText,
   Loader2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-import { LABEL_SIZES } from '@/types/label';
-import { labelToXml, downloadLabelFile } from '@/lib/dymoFormat';
+import { LABEL_SIZES, type HomeboxItem } from '@/types/label';
+import { labelToXml, downloadLabelFile, substitutePlaceholders } from '@/lib/dymoFormat';
 import { printLabel } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import ItemBrowser from './ItemBrowser';
 
 export default function EditorToolbar() {
   const { 
@@ -43,22 +42,50 @@ export default function EditorToolbar() {
     setShowGrid,
     setLabelSize,
     setLabelName,
+    previewItem,
+    setPreviewItem,
+    isPreviewMode,
+    setIsPreviewMode,
   } = useLabelEditorContext();
   
   const { logout } = useAuth();
   const { toast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
 
+  const handleSelectItem = (item: HomeboxItem | null) => {
+    setPreviewItem(item);
+    if (item) {
+      setIsPreviewMode(true);
+    }
+  };
+
   const handlePrint = async () => {
     setIsPrinting(true);
     try {
-      const xml = labelToXml(label);
+      let xml = labelToXml(label);
+      
+      // If previewing with an item, substitute placeholders
+      if (isPreviewMode && previewItem) {
+        const itemData: Record<string, string> = {
+          '{item_name}': previewItem.name,
+          '{location}': previewItem.location.path,
+          '{quantity}': previewItem.quantity.toString(),
+          '{item_id}': previewItem.id,
+          '{asset_id}': previewItem.assetId,
+          '{description}': previewItem.description,
+          '{notes}': previewItem.notes,
+        };
+        xml = substitutePlaceholders(xml, itemData);
+      }
+      
       const result = await printLabel(xml);
       
       if (result.ok) {
         toast({
           title: "Label sent to printer",
-          description: "Your label is being printed.",
+          description: previewItem 
+            ? `Printing label for "${previewItem.name}"` 
+            : "Your label is being printed.",
         });
       } else {
         throw new Error(result.message);
@@ -75,11 +102,45 @@ export default function EditorToolbar() {
   };
 
   const handleDownload = () => {
-    downloadLabelFile(label);
-    toast({
-      title: "Label downloaded",
-      description: `${label.name}.lbl has been saved.`,
-    });
+    if (isPreviewMode && previewItem) {
+      // Download with substituted data
+      const itemData: Record<string, string> = {
+        '{item_name}': previewItem.name,
+        '{location}': previewItem.location.path,
+        '{quantity}': previewItem.quantity.toString(),
+        '{item_id}': previewItem.id,
+        '{asset_id}': previewItem.assetId,
+        '{description}': previewItem.description,
+        '{notes}': previewItem.notes,
+      };
+      
+      // Create a temporary label with substituted content
+      const substitutedLabel = {
+        ...label,
+        elements: label.elements.map(el => {
+          if (el.type === 'text') {
+            return { ...el, content: substitutePlaceholders(el.content, itemData) };
+          } else if (el.type === 'qrcode') {
+            return { ...el, data: substitutePlaceholders(el.data, itemData) };
+          } else if (el.type === 'barcode') {
+            return { ...el, data: substitutePlaceholders(el.data, itemData) };
+          }
+          return el;
+        }),
+      };
+      
+      downloadLabelFile(substitutedLabel, `${previewItem.name.replace(/\s+/g, '_')}_label.lbl`);
+      toast({
+        title: "Label downloaded",
+        description: `Label for "${previewItem.name}" has been saved.`,
+      });
+    } else {
+      downloadLabelFile(label);
+      toast({
+        title: "Label downloaded",
+        description: `${label.name}.lbl has been saved.`,
+      });
+    }
   };
 
   const zoomPresets = [25, 50, 75, 100, 150, 200, 300, 400];
@@ -224,6 +285,34 @@ export default function EditorToolbar() {
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Item Browser & Preview Toggle */}
+      <div className="flex items-center gap-2">
+        <ItemBrowser 
+          onSelectItem={handleSelectItem}
+          selectedItem={previewItem}
+        />
+        
+        {previewItem && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant={isPreviewMode ? "secondary" : "ghost"}
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => setIsPreviewMode(!isPreviewMode)}
+              >
+                {isPreviewMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isPreviewMode ? 'Showing real data' : 'Show placeholders'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      <Separator orientation="vertical" className="h-6" />
 
       {/* Actions */}
       <div className="flex items-center gap-2">
