@@ -43,6 +43,7 @@ def print_label():
     """Print label endpoint."""
     try:
         lbl_content = request.data
+        temp_path = None
         
         with tempfile.NamedTemporaryFile(mode='wb', suffix='.lbl', delete=False) as f:
             f.write(lbl_content)
@@ -55,7 +56,12 @@ def print_label():
             
             return jsonify({'ok': True, 'message': 'Label sent to printer', 'job_id': job_id}), 200
         finally:
-            os.unlink(temp_path)
+            # Clean up temp file if it exists
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file: {e}")
                 
     except Exception as e:
         logger.error(f"Print error: {e}")

@@ -13,12 +13,13 @@ const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
  * @param {Object} db - Database instance
  */
 export async function handleWebhook(payload, db) {
-  console.log('Webhook received:', JSON.stringify(payload, null, 2));
-
-  // Validate webhook secret if configured
+  // Validate webhook secret if configured first (before logging)
   if (WEBHOOK_SECRET && payload.secret !== WEBHOOK_SECRET) {
+    console.error('Webhook received with invalid secret');
     throw new Error('Invalid webhook secret');
   }
+
+  console.log('Webhook received:', JSON.stringify(payload, null, 2));
 
   // Extract item data from payload
   const itemId = payload.item?.id || payload.itemId || payload.id;

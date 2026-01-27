@@ -53,8 +53,16 @@ if ! grep -q "WEBHOOK_SECRET=your-webhook-secret" .env 2>/dev/null; then
 else
     echo "Generating secure webhook secret..."
     SECRET=$(openssl rand -hex 32)
-    sed -i.bak "s/WEBHOOK_SECRET=your-webhook-secret/WEBHOOK_SECRET=$SECRET/" .env
-    rm -f .env.bak
+    
+    # Platform-specific sed usage
+    if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "freebsd"* ]]; then
+        # macOS and FreeBSD require empty string argument
+        sed -i '' "s/WEBHOOK_SECRET=your-webhook-secret/WEBHOOK_SECRET=$SECRET/" .env
+    else
+        # Linux and other Unix-like systems
+        sed -i "s/WEBHOOK_SECRET=your-webhook-secret/WEBHOOK_SECRET=$SECRET/" .env
+    fi
+    
     echo -e "${GREEN}✓${NC} Webhook secret generated: $SECRET"
 fi
 

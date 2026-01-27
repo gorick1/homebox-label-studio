@@ -173,11 +173,13 @@ function colorToRgba(color) {
 
 /**
  * Replace placeholders in text with actual item data
+ * Only replaces known placeholders in curly braces
  */
 export function replacePlaceholders(text, itemData) {
   if (!text || !itemData) return text;
   
-  const replacements = {
+  // Define valid placeholders with their corresponding values
+  const placeholders = {
     '{item_name}': itemData.name || '',
     '{location}': itemData.location?.path || itemData.location?.name || '',
     '{quantity}': itemData.quantity?.toString() || '0',
@@ -188,8 +190,12 @@ export function replacePlaceholders(text, itemData) {
   };
 
   let result = text;
-  for (const [placeholder, value] of Object.entries(replacements)) {
-    result = result.replace(new RegExp(placeholder, 'g'), value);
+  
+  // Only replace exact placeholder matches to avoid unintended replacements
+  for (const [placeholder, value] of Object.entries(placeholders)) {
+    // Use word boundaries to ensure we only replace complete placeholders
+    const regex = new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g');
+    result = result.replace(regex, value);
   }
   
   return result;

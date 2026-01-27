@@ -2,7 +2,7 @@
 
 All notable changes to Homebox Label Studio will be documented in this file.
 
-## [1.0.0] - 2024-01-27
+## [1.0.0] - 2026-01-27
 
 ### Added - Homebox Integration Release
 
@@ -175,5 +175,5 @@ If you're upgrading from a previous version without backend:
 
 ## Version History
 
-- **1.0.0** (2024-01-27): Initial Homebox integration release
+- **1.0.0** (2026-01-27): Initial Homebox integration release
 - Previous versions: Label designer only (no backend)

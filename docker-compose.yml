@@ -37,7 +37,7 @@ services:
       - PRINT_PROXY_URL=http://print-proxy:5000
       - DATABASE_URL=/data/templates.db
       - AUTO_PRINT_ON_CREATE=${AUTO_PRINT_ON_CREATE:-true}
-      - DEFAULT_TEMPLATE_ID=${DEFAULT_TEMPLATE_ID:-}
+      - DEFAULT_TEMPLATE_ID=${DEFAULT_TEMPLATE_ID:-}  # Set after creating templates via API
       - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
       - HOMEBOX_API_TOKEN=${HOMEBOX_API_TOKEN:-}
     volumes:

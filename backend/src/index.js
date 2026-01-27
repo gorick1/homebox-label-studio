@@ -137,7 +137,7 @@ app.put('/templates/:id', (req, res) => {
     const { name, description, label, isFavorite } = req.body;
     const now = new Date().toISOString();
     
-    db.prepare(`
+    const result = db.prepare(`
       UPDATE templates 
       SET name = ?, description = ?, label_data = ?, is_favorite = ?, updated_at = ?
       WHERE id = ?
@@ -150,10 +150,12 @@ app.put('/templates/:id', (req, res) => {
       req.params.id
     );
     
-    const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id);
-    if (!template) {
+    // Check if any rows were updated
+    if (result.changes === 0) {
       return res.status(404).json({ error: 'Template not found' });
     }
+    
+    const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id);
     
     res.json({
       ...template,
