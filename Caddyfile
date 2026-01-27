@@ -1,0 +1,9 @@
+# Local HTTPS routing (Caddy handles TLS)
+
+localhost {
+  root * /srv
+  file_server
+}
+
+# Route internal requests to Docker services
+# (Cloudflare tunnel will expose these to internet)

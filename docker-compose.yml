@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Main Homebox inventory system
+  homebox:
+    image: ghcr.io/hay-kot/homebox:latest
+    container_name: homebox
+    restart: unless-stopped
+    environment:
+      - HBOX_LOG_LEVEL=info
+      - HBOX_MAILER_FROM=noreply@homebox.local
+    ports:
+      - "3100:7745"
+    volumes:
+      - ./homebox-data:/home/homebox/.local/share/homebox
+    networks:
+      - homebox-net
+
+  # Homebox Companion (AI addon) 
+  homebox-companion:
+    build:
+      context: ./homebox-companion
+      dockerfile: Dockerfile
+    container_name: homebox-companion
+    restart: unless-stopped
+    environment:
+      - HBC_LLM_API_KEY=${HBC_LLM_API_KEY:-sk-your-api-key-here}
+      - HBC_HOMEBOX_URL=http://homebox:7745
+      - HBC_LLM_MODEL=gpt-4-mini
+      - HBC_LOG_LEVEL=INFO
+    ports:
+      - "3101:8000"
+    volumes:
+      - ./homebox-companion-data:/app/data
+    networks:
+      - homebox-net
+    depends_on:
+      - homebox
+
+  # Homebox Print Addon (label printing)
+  homebox-print-addon:
+    build:
+      context: ./homebox-print-addon
+      dockerfile: Dockerfile
+    container_name: homebox-print-addon
+    restart: unless-stopped
+    environment:
+      - HOMEBOX_API_URL=http://homebox:7745
+      - DYMO_PRINTER_NAME=${DYMO_PRINTER_NAME:-DYMO LabelWriter 4XL}
+      - DEFAULT_LABEL_TEMPLATE=item-default
+      - LOG_LEVEL=INFO
+    ports:
+      - "8002:8001"
+    volumes:
+      - ./homebox-print-addon-data:/app/data
+      - ./label-templates:/app/label-templates
+    networks:
+      - homebox-net
+    depends_on:
+      - homebox
+
+  # Label Designer (template design UI)
+  label-designer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: label-designer
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8002}
+    ports:
+      - "8001:80"
+    networks:
+      - homebox-net
+
+  # Caddy reverse proxy (HTTPS, local routing)
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy-data:/data
+      - ./caddy-config:/config
+    networks:
+      - homebox-net
+    depends_on:
+      - homebox
+      - homebox-companion
+      - homebox-print-addon
+      - label-designer
+
+  # Cloudflared tunnel (exposes local services to internet)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run homebox-tunnel
+    volumes:
+      - ~/.cloudflared:/etc/cloudflared
+    networks:
+      - homebox-net
+    depends_on:
+      - caddy
+
+networks:
+  homebox-net:
+    driver: bridge

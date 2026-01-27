@@ -22,3 +22,28 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment and secrets
+.env
+.env.local
+.env.production
+
+# Docker data directories
+homebox-data/
+homebox-companion-data/
+homebox-print-addon-data/
+label-studio-data/
+label-templates/*.dymo
+caddy-data/
+caddy-config/
+
+# Backup files
+*.bak
+*.old
+*.backup
+README.old.bak
+
+# Temporary files
+tmp/
+temp/
+*.tmp
