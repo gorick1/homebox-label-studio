@@ -1,5 +1,5 @@
 # Multi-stage build for Label Designer
-# Note: Build locally first with "npm run build" if Docker build fails
+# Note: If Docker build fails, use Dockerfile.simple with pre-built assets
 
 # Build stage
 FROM node:20-slim AS builder
@@ -9,10 +9,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Configure npm to ignore SSL errors (for Docker build environments)
-RUN npm config set strict-ssl false
-
 # Install dependencies
+# Note: In restricted environments, you may need to configure npm proxy settings
 RUN npm install
 
 # Copy source files

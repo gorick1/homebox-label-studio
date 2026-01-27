@@ -80,8 +80,8 @@ fi
 echo "🔨 Building Docker images..."
 echo "Building label-designer..."
 
-# Try building label-designer, fall back to simple Dockerfile if it fails
-if ! $DOCKER_COMPOSE build label-designer 2>&1 | tee /tmp/build.log | grep -q "ERROR"; then
+# Try building label-designer, check for errors
+if $DOCKER_COMPOSE build label-designer 2>&1 | tee /tmp/build.log && ! grep -q "ERROR" /tmp/build.log; then
     echo "✓ Label designer built successfully"
 elif [ ! -d "dist" ]; then
     echo "⚠️  Docker build encountered issues. Building locally first..."

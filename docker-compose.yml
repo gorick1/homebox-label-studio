@@ -19,7 +19,7 @@ services:
   # Homebox Companion (AI addon) 
   homebox-companion:
     build:
-      context: ./homebox-companion
+      context: ../homebox-companion
       dockerfile: Dockerfile
     container_name: homebox-companion
     restart: unless-stopped
@@ -40,7 +40,7 @@ services:
   # Homebox Print Addon (label printing)
   homebox-print-addon:
     build:
-      context: ./homebox-print-addon
+      context: ../homebox-print-addon
       dockerfile: Dockerfile
     container_name: homebox-print-addon
     restart: unless-stopped
