@@ -78,7 +78,28 @@ fi
 
 # Build images
 echo "🔨 Building Docker images..."
-$DOCKER_COMPOSE build label-designer
+echo "Building label-designer..."
+
+# Try building label-designer, fall back to simple Dockerfile if it fails
+if ! $DOCKER_COMPOSE build label-designer 2>&1 | tee /tmp/build.log | grep -q "ERROR"; then
+    echo "✓ Label designer built successfully"
+elif [ ! -d "dist" ]; then
+    echo "⚠️  Docker build encountered issues. Building locally first..."
+    if command -v npm &> /dev/null; then
+        echo "Building with npm..."
+        npm install && npm run build
+        echo "Now building Docker image with pre-built assets..."
+        docker build -f Dockerfile.simple -t label-studio:latest .
+    else
+        echo "❌ npm not found. Cannot build label designer."
+        echo "   Install Node.js and npm, then run: npm install && npm run build"
+        echo "   Or pull a pre-built image if available."
+        exit 1
+    fi
+else
+    echo "✓ Using existing dist folder for Docker build"
+    docker build -f Dockerfile.simple -t label-studio:latest .
+fi
 
 # Start services
 echo "🚀 Starting services..."

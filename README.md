@@ -200,6 +200,21 @@ Build for production:
 npm run build
 ```
 
+### Docker Build Notes
+
+The Dockerfile builds the app in a multi-stage process. If you encounter Docker build issues:
+
+**Option 1: Build locally first**
+```bash
+npm install && npm run build
+docker build -f Dockerfile.simple -t label-designer .
+```
+
+**Option 2: Use docker-compose (recommended)**
+```bash
+./install.sh  # Handles build automatically with fallback
+```
+
 ## Configuration Files
 
 - `.env` - Environment variables (API keys, printer, etc.)
