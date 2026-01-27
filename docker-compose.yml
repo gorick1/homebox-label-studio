@@ -96,10 +96,10 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
   # Print Proxy Server - Handles DYMO label printing
-  # Note: You'll need to implement or use an existing print server
-  # This is a placeholder for the print server service
   print-proxy:
-    image: your-print-proxy-image:latest  # Replace with actual image
+    build:
+      context: ./print-proxy-example
+      dockerfile: Dockerfile
     container_name: print-proxy
     restart: unless-stopped
     ports:
@@ -109,11 +109,17 @@ services:
     privileged: true  # Required for USB device access
     volumes:
       - /var/run/dbus:/var/run/dbus
+    environment:
+      - PRINTER_NAME=${PRINTER_NAME:-}  # Auto-detect if not set
+      - LOG_LEVEL=${PRINT_LOG_LEVEL:-INFO}
     networks:
       - homebox-network
-    # Uncomment if you have a specific print-proxy implementation
-    # environment:
-    #   - PRINTER_NAME=DYMO LabelWriter 450
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   homebox-data:
