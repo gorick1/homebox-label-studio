@@ -1,15 +1,14 @@
 import type { LabelTemplate, HomeboxItem, Label } from '@/types/label';
 
-// Configuration - these would be set based on deployment environment
+// Configuration from environment variables
 const API_CONFIG = {
-  // In production, these would come from environment or settings
-  addonBaseUrl: '/api', // Same origin for the addon
-  homeboxUrl: 'https://homebox.garrettorick.com',
-  printProxyUrl: 'http://print-proxy:5000',
+  addonBaseUrl: import.meta.env.VITE_API_BASE_URL || '/api',
+  homeboxUrl: import.meta.env.VITE_HOMEBOX_URL || 'http://localhost:7745',
+  printProxyUrl: import.meta.env.VITE_PRINT_PROXY_URL || 'http://localhost:5000',
 };
 
 // Dev mode - allows bypassing auth for testing
-const DEV_MODE = true;
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true' || import.meta.env.DEV;
 
 function getAuthToken(): string | null {
   return localStorage.getItem('hb_token');

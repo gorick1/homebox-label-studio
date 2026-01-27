@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # Homebox Label Studio Frontend + Backend
+  label-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homebox-label-studio
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_BASE_URL=/api
+      - VITE_HOMEBOX_URL=http://homebox:7745
+      - VITE_PRINT_PROXY_URL=http://print-proxy:5000
+      - VITE_DEV_MODE=false
+    depends_on:
+      - backend
+    networks:
+      - homebox-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    container_name: label-studio-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - API_PORT=3001
+      - HOMEBOX_API_URL=http://homebox:7745
+      - PRINT_PROXY_URL=http://print-proxy:5000
+      - DATABASE_URL=/data/templates.db
+      - AUTO_PRINT_ON_CREATE=${AUTO_PRINT_ON_CREATE:-true}
+      - DEFAULT_TEMPLATE_ID=${DEFAULT_TEMPLATE_ID:-}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+      - HOMEBOX_API_TOKEN=${HOMEBOX_API_TOKEN:-}
+    volumes:
+      - label-data:/data
+    networks:
+      - homebox-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Homebox - Inventory Management (from sysadminsmedia/homebox)
+  # Note: This is an example configuration. Adjust to your needs.
+  homebox:
+    image: ghcr.io/sysadminsmedia/homebox:latest
+    container_name: homebox
+    restart: unless-stopped
+    ports:
+      - "7745:7745"
+    environment:
+      - HBOX_LOG_LEVEL=info
+      - HBOX_LOG_FORMAT=text
+      - HBOX_WEB_MAX_UPLOAD_SIZE=10
+      # Configure webhook to notify label-studio on item creation
+      - HBOX_WEBHOOK_URL=${HBOX_WEBHOOK_URL:-http://backend:3001/webhook/item-created}
+      - HBOX_WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+    volumes:
+      - homebox-data:/data
+    networks:
+      - homebox-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Homebox Companion - AI-powered item scanner (from Duelion/homebox-companion)
+  # Note: This is an example configuration. Adjust to your needs.
+  homebox-companion:
+    image: ghcr.io/duelion/homebox-companion:latest
+    container_name: homebox-companion
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - HOMEBOX_URL=http://homebox:7745
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OLLAMA_URL=${OLLAMA_URL:-}
+    volumes:
+      - companion-data:/data
+    depends_on:
+      - homebox
+    networks:
+      - homebox-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Print Proxy Server - Handles DYMO label printing
+  # Note: You'll need to implement or use an existing print server
+  # This is a placeholder for the print server service
+  print-proxy:
+    image: your-print-proxy-image:latest  # Replace with actual image
+    container_name: print-proxy
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    devices:
+      - /dev/usb:/dev/usb  # USB access for DYMO printer
+    privileged: true  # Required for USB device access
+    volumes:
+      - /var/run/dbus:/var/run/dbus
+    networks:
+      - homebox-network
+    # Uncomment if you have a specific print-proxy implementation
+    # environment:
+    #   - PRINTER_NAME=DYMO LabelWriter 450
+
+volumes:
+  homebox-data:
+    driver: local
+  companion-data:
+    driver: local
+  label-data:
+    driver: local
+
+networks:
+  homebox-network:
+    driver: bridge
