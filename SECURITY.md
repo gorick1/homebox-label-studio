@@ -165,20 +165,13 @@ Limited audit trail for template changes:
 
 **No critical vulnerabilities remain.**
 
-### Dependency Audit
-**Frontend**:
-```bash
-npm audit
-# 8 vulnerabilities (4 moderate, 4 high)
-# All in devDependencies (testing tools)
-# No production impact
-```
+### Known Vulnerabilities - RESOLVED
 
-**Backend**:
-```bash
-cd backend && npm audit
-# 0 vulnerabilities
-```
+**Previous Issues (Fixed in v1.0.1):**
+1. ~~Waitress < 3.0.1 - DoS vulnerability~~ → **Fixed**: Updated to 3.0.1
+2. ~~Waitress < 3.0.1 - HTTP pipelining race condition~~ → **Fixed**: Updated to 3.0.1
+
+All known vulnerabilities have been patched.
 
 ### Recommendations for Production
 

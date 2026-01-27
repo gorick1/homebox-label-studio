@@ -2,6 +2,14 @@
 
 All notable changes to Homebox Label Studio will be documented in this file.
 
+## [1.0.1] - 2026-01-27
+
+### Security
+- **CRITICAL**: Updated waitress from 3.0.0 to 3.0.1 to fix vulnerabilities:
+  - CVE: DoS leading to high CPU usage/resource exhaustion
+  - CVE: Request processing race condition in HTTP pipelining with invalid first request
+- All production dependencies now vulnerability-free
+
 ## [1.0.0] - 2026-01-27
 
 ### Added - Homebox Integration Release
@@ -175,5 +183,6 @@ If you're upgrading from a previous version without backend:
 
 ## Version History
 
+- **1.0.1** (2026-01-27): Security patch - waitress 3.0.1 (fixes DoS and HTTP pipelining vulnerabilities)
 - **1.0.0** (2026-01-27): Initial Homebox integration release
 - Previous versions: Label designer only (no backend)
