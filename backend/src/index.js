@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -47,9 +48,31 @@ db.exec(`
   );
 `);
 
+// Rate limiting middleware
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const webhookLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Allow up to 30 webhooks per minute
+  message: 'Too many webhook requests, please slow down.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Apply rate limiting to all API routes
+app.use('/templates', apiLimiter);
+app.use('/download-lbl', apiLimiter);
+app.use('/print-history', apiLimiter);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -208,7 +231,7 @@ app.post('/download-lbl', (req, res) => {
 });
 
 // Webhook endpoint for Homebox item creation
-app.post('/webhook/item-created', async (req, res) => {
+app.post('/webhook/item-created', webhookLimiter, async (req, res) => {
   try {
     await handleWebhook(req.body, db);
     res.json({ success: true, message: 'Webhook processed successfully' });

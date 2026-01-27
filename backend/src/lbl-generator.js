@@ -172,6 +172,13 @@ function colorToRgba(color) {
 }
 
 /**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Replace placeholders in text with actual item data
  * Only replaces known placeholders in curly braces
  */
@@ -193,8 +200,8 @@ export function replacePlaceholders(text, itemData) {
   
   // Only replace exact placeholder matches to avoid unintended replacements
   for (const [placeholder, value] of Object.entries(placeholders)) {
-    // Use word boundaries to ensure we only replace complete placeholders
-    const regex = new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g');
+    // Properly escape all special regex characters
+    const regex = new RegExp(escapeRegex(placeholder), 'g');
     result = result.replace(regex, value);
   }
   
