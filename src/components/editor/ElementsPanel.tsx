@@ -103,7 +103,7 @@ export default function ElementsPanel() {
   const { label, selectedElementId, addElement } = useLabelEditorContext();
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+<div className="flex flex-col">
       {/* Header */}
       <div className="p-4 border-b bg-card/50">
         <div className="flex items-center gap-2">
@@ -199,14 +199,14 @@ export default function ElementsPanel() {
       <Separator />
 
       {/* Elements List / Layers */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col">
         <div className="p-4 pb-2 flex items-center gap-2">
           <Layers className="h-4 w-4 text-muted-foreground" />
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Layers ({label.elements.length})
           </p>
         </div>
-        <ScrollArea className="flex-1">
+        <ScrollArea className="max-h-48">
           <div className="px-3 pb-3 space-y-1">
             {label.elements.length === 0 ? (
               <div className="text-center py-12 text-sm text-muted-foreground">

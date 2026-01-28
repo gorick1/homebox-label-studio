@@ -7,6 +7,7 @@ import TemplatesPanel from '@/components/editor/TemplatesPanel';
 import { useAutoprintMonitor } from '@/hooks/useAutoprintMonitor';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles } from 'lucide-react';
 
 // Key to force remount on HMR issues
@@ -37,9 +38,11 @@ function EditorContent() {
       
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar: Elements + Templates */}
-        <aside className="flex flex-col w-72 border-r bg-card/50 glass-panel overflow-hidden">
-          <ElementsPanel />
-          <TemplatesPanel />
+        <aside className="w-72 border-r bg-card/50 glass-panel overflow-hidden">
+          <ScrollArea className="h-full">
+            <ElementsPanel />
+            <TemplatesPanel />
+          </ScrollArea>
         </aside>
         
         {/* Center: Canvas - takes most of the space */}

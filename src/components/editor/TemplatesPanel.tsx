@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  FolderOpen, 
   Save, 
   Star, 
   StarOff, 
@@ -21,6 +20,7 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getTemplates, saveTemplate, deleteTemplate, setDefaultTemplate } from '@/lib/api';
 import type { LabelTemplate as TemplateType } from '@/types/label';
 import { useToast } from '@/hooks/use-toast';
@@ -209,7 +209,7 @@ export default function TemplatesPanel() {
   };
 
   return (
-    <div className="flex-1 border-t flex flex-col min-h-0">
+    <div className="border-t flex flex-col">
       {/* Header with Defaults Info */}
       <div className="p-3 border-b bg-muted/30">
         <div className="flex items-center justify-between mb-3">
@@ -305,7 +305,7 @@ export default function TemplatesPanel() {
       </div>
 
       {/* Templates List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="max-h-64">
         <div className="p-2 space-y-1">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -348,9 +348,8 @@ export default function TemplatesPanel() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="sm"
-                      className="h-6 px-2 text-xs"
+                    {/* Item Default Toggle Pill */}
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         if (template.isDefaultForItems) {
@@ -361,13 +360,18 @@ export default function TemplatesPanel() {
                         }
                       }}
                       title={template.isDefaultForItems ? "Clear item default" : "Set as item default"}
-                      variant={template.isDefaultForItems ? "default" : "ghost"}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all",
+                        template.isDefaultForItems
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      )}
                     >
-                      {template.isDefaultForItems ? '✓ Item' : 'Item'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-6 px-2 text-xs"
+                      {template.isDefaultForItems && <Check className="h-3 w-3" />}
+                      Item
+                    </button>
+                    {/* Container Default Toggle Pill */}
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         if (template.isDefaultForContainers) {
@@ -378,10 +382,16 @@ export default function TemplatesPanel() {
                         }
                       }}
                       title={template.isDefaultForContainers ? "Clear container default" : "Set as container default"}
-                      variant={template.isDefaultForContainers ? "default" : "ghost"}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all",
+                        template.isDefaultForContainers
+                          ? "bg-accent text-accent-foreground shadow-sm"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      )}
                     >
-                      {template.isDefaultForContainers ? '✓ Container' : 'Container'}
-                    </Button>
+                      {template.isDefaultForContainers && <Check className="h-3 w-3" />}
+                      Container
+                    </button>
                     <Button
                       variant="ghost"
                       size="icon"
