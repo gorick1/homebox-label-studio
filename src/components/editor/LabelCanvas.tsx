@@ -467,10 +467,15 @@ export default function LabelCanvas() {
   return (
     <div 
       ref={containerRef}
-      className="flex-1 flex items-center justify-center bg-muted/30 overflow-auto p-8"
+      className="flex-1 flex items-center justify-center canvas-pattern overflow-auto p-8"
     >
+      {/* Zoom indicator */}
+      <div className="fixed bottom-6 right-96 z-10 px-3 py-1.5 rounded-full bg-card/80 glass-panel text-xs font-medium text-muted-foreground shadow-elevation-md">
+        {zoom}%
+      </div>
+      
       <div 
-        className="relative shadow-xl rounded-sm bg-white"
+        className="relative shadow-elevation-xl rounded-lg bg-card overflow-hidden ring-1 ring-border/50"
         style={{ 
           width: canvasWidth,
           height: canvasHeight,
@@ -479,7 +484,7 @@ export default function LabelCanvas() {
         <canvas
           ref={canvasRef}
           className={cn(
-            "absolute inset-0 rounded-sm",
+            "absolute inset-0",
             isDragging && "cursor-grabbing",
           )}
           style={{ 
