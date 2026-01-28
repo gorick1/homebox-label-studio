@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import LabelSizeSelector from './LabelSizeSelector';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
@@ -174,24 +175,10 @@ export default function EditorToolbar() {
       />
 
       {/* Label Size */}
-      <Select
-        value={label.size.id}
-        onValueChange={(value) => {
-          const size = LABEL_SIZES.find(s => s.id === value);
-          if (size) setLabelSize(size);
-        }}
-      >
-        <SelectTrigger className="w-44 h-8 bg-background/50 border-border/50">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="bg-popover border shadow-elevation-lg">
-          {LABEL_SIZES.map((size) => (
-            <SelectItem key={size.id} value={size.id}>
-              {size.name} ({size.width}" × {size.height}")
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <LabelSizeSelector
+        value={label.size}
+        onValueChange={setLabelSize}
+      />
 
       <Separator orientation="vertical" className="h-6 bg-border/50" />
 

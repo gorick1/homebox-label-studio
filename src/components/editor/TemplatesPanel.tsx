@@ -38,7 +38,7 @@ const MOCK_TEMPLATES: TemplateType[] = [
     label: {
       id: 'template-1',
       name: 'Standard Item Label',
-      size: { id: 'dymo-30334', name: 'DYMO 30334', width: 2.25, height: 1.25 },
+      size: { id: 'dymo-30334', partNumber: '30334', name: 'DYMO 30334', width: 2.25, height: 1.25, category: 'Multi-Purpose', description: '2¼" × 1¼" Medium' },
       elements: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
