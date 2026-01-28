@@ -37,8 +37,8 @@ export function useAutoprintMonitor() {
       // Render the template with the item data
       const canvas = document.createElement('canvas');
       const dpi = 300;
-      const width = (template.size.width * dpi) / 25.4; // Convert from inches to pixels
-      const height = (template.size.height * dpi) / 25.4;
+      const width = (template.label.size.width * dpi) / 25.4; // Convert from inches to pixels
+      const height = (template.label.size.height * dpi) / 25.4;
 
       canvas.width = width;
       canvas.height = height;
@@ -57,7 +57,7 @@ export function useAutoprintMonitor() {
       ctx.scale(dpi / 96, dpi / 96);
 
       // Render each element in the template
-      for (const element of template.elements) {
+      for (const element of template.label.elements) {
         // Convert inches to pixels
         const x = (element.position.x * dpi) / 25.4;
         const y = (element.position.y * dpi) / 25.4;
@@ -129,7 +129,7 @@ export function useAutoprintMonitor() {
               // Only trigger autoprint after initial load
               console.log(`New item detected: "${item.name}"`);
               // Determine if this is an item or location based on the data
-              const isLocation = item.type === 'location' || !item.location;
+              const isLocation = !item.location;
               const itemType = isLocation ? 'location' : 'item';
               await renderAndPrint(item, itemType);
             }
