@@ -1,196 +1,201 @@
 
 
-# Fix Scrolling & Improve Default Buttons
+# Fix UI Issues and Add Keyboard Delete
 
-## Problem Analysis
+## Issues Identified
 
-### Issue 1: Sidebar Scrolling
-The left sidebar contains two panels stacked vertically (ElementsPanel + TemplatesPanel), both using `flex-1`. This causes them to compete for space, and when content exceeds the available height, it gets cut off instead of scrolling.
-
-**Root Cause:**
-- Both panels have `flex-1` which means they try to grow equally
-- The combined content height exceeds viewport height
-- ScrollArea needs a **fixed or constrained height** to enable scrolling, but parent containers are fighting for flex-grow
-
-### Issue 2: Default Buttons Appearance
-The "Item" and "Container" default toggle buttons on template rows are currently plain, small buttons that are hard to see and don't match the modern glass aesthetic.
+Based on the code review and your description, there are **5 issues** to fix:
 
 ---
 
-## Solution
+## Issue 1: Left Sidebar Cut Off Near Canvas
 
-### Part 1: Fix Sidebar Scrolling
+**Problem:** The left sidebar content gets visually cut off or obscured as it extends toward the canvas area.
 
-**Strategy:** Give each panel section a proper height constraint and make the entire sidebar scrollable, OR split the sidebar into collapsible sections with independent scroll areas.
+**Root Cause:** The `overflow-hidden` class on the sidebar `<aside>` element (line 41 in Editor.tsx) combined with internal scrolling may be causing clipping issues. Additionally, the z-index stacking may need adjustment.
 
-**Recommended Approach:** Make the sidebar a single scrollable container with proper flex children.
+**Fix Location:** `src/pages/Editor.tsx` line 41
 
-**File:** `src/pages/Editor.tsx`
-- Wrap the left sidebar content in a ScrollArea that spans the full sidebar height
-
-**File:** `src/components/editor/ElementsPanel.tsx`
-- Remove `flex-1` and `overflow-hidden` 
-- Allow natural height based on content
-- Keep internal ScrollArea only for the layers list (which can get long)
-
-**File:** `src/components/editor/TemplatesPanel.tsx`
-- Remove `flex-1` and `min-h-0`
-- Give templates section a max-height with its own scroll
-- OR make it collapsible
-
-### Part 2: Improve Default Buttons
-
-Replace the plain text buttons with modern pill-style toggle buttons that:
-- Use distinct colors for active/inactive states
-- Have icons (checkmark when active)
-- Use the glass aesthetic with subtle backgrounds
-- Are more touch-friendly with better sizing
+**Solution:** 
+- Remove `overflow-hidden` from the aside and let the ScrollArea handle overflow
+- Ensure proper z-index ordering so sidebar appears above any canvas overflow
 
 ---
 
-## Implementation Details
+## Issue 2: Blue Demo Mode Banner Blocking Toolbar Buttons
 
-### Changes to `src/pages/Editor.tsx`
+**Problem:** The demo mode banner at the top is preventing interaction with toolbar buttons.
 
-Update the left sidebar to use a ScrollArea wrapper:
+**Root Cause:** The demo mode banner (lines 25-34 in Editor.tsx) may have z-index or pointer-event issues, OR the zoom indicator (line 473 in LabelCanvas.tsx) which uses `fixed` positioning with `z-10` may be overlapping the toolbar area.
 
-```jsx
-{/* Left sidebar: Elements + Templates */}
-<aside className="flex flex-col w-72 border-r bg-card/50 glass-panel">
-  <ScrollArea className="flex-1">
-    <ElementsPanel />
-    <TemplatesPanel />
-  </ScrollArea>
-</aside>
-```
+**Fix Location:** 
+- `src/components/editor/LabelCanvas.tsx` line 473 - change the zoom indicator positioning
+- Potentially add `relative z-0` to main content area
 
-### Changes to `src/components/editor/ElementsPanel.tsx`
-
-Remove flex-1 from the root and adjust structure:
-
-```jsx
-// Change line 106 from:
-<div className="flex-1 flex flex-col overflow-hidden">
-
-// To:
-<div className="flex flex-col">
-```
-
-For the Layers section, give it a max-height:
-
-```jsx
-// Around line 209, add max-height to ScrollArea:
-<ScrollArea className="max-h-48">
-```
-
-### Changes to `src/components/editor/TemplatesPanel.tsx`
-
-**1. Update root container (line 211-212):**
-```jsx
-// From:
-<div className="flex-1 border-t flex flex-col min-h-0">
-
-// To:
-<div className="border-t flex flex-col">
-```
-
-**2. Give templates list a max-height (line 308):**
-```jsx
-// From:
-<ScrollArea className="flex-1">
-
-// To:
-<ScrollArea className="max-h-64">
-```
-
-**3. Redesign the default toggle buttons (lines 351-384):**
-
-Replace the current plain buttons with styled toggle pills:
-
-```jsx
-{/* Item Default Toggle */}
-<button
-  onClick={(e) => { /* existing logic */ }}
-  className={cn(
-    "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all",
-    template.isDefaultForItems
-      ? "bg-primary text-primary-foreground shadow-sm"
-      : "bg-muted/50 text-muted-foreground hover:bg-muted"
-  )}
->
-  {template.isDefaultForItems && <Check className="h-3 w-3" />}
-  Item
-</button>
-
-{/* Container Default Toggle */}
-<button
-  onClick={(e) => { /* existing logic */ }}
-  className={cn(
-    "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all",
-    template.isDefaultForContainers
-      ? "bg-emerald-500 text-white shadow-sm"
-      : "bg-muted/50 text-muted-foreground hover:bg-muted"
-  )}
->
-  {template.isDefaultForContainers && <Check className="h-3 w-3" />}
-  Container
-</button>
-```
+**Solution:**
+- Change the zoom indicator from `fixed` to `absolute` positioning within the canvas container
+- Ensure proper stacking context so banner and toolbar don't interfere
 
 ---
 
-## Visual Preview
+## Issue 3: Rename "Asset ID Barcode" to "Item ID Barcode"
 
-### Before (Default Buttons)
-```
-[ Item ] [ Container ]  ← Plain ghost buttons, hard to see
-```
+**Problem:** The Quick Presets section shows "Asset ID Barcode" but it actually uses `{item_id}`.
 
-### After (Default Buttons)
-```
-[● Item] [Container]   ← When Item is default: blue pill with checkmark
-[Item] [● Container]   ← When Container is default: green pill with checkmark  
-[Item] [Container]     ← Neither default: subtle gray pills
-```
+**Fix Location:** `src/components/editor/ElementsPanel.tsx` line 194
 
-### Before (Sidebar)
-```
-┌──────────────────┐
-│ Elements Panel   │ ← Takes 50% height
-│ (cut off)        │
-├──────────────────┤
-│ Templates Panel  │ ← Takes 50% height
-│ (cut off)        │
-└──────────────────┘
-```
-
-### After (Sidebar)
-```
-┌──────────────────┐
-│ Elements Panel   │
-│ └─ Layers (scroll)
-│ Quick Presets    │
-│ Templates Panel  │
-│ └─ List (scroll) │
-│                  │ ← Full sidebar scrolls if needed
-└──────────────────┘
-```
+**Solution:** Change the label text from "Asset ID Barcode" to "Item ID Barcode"
 
 ---
 
-## Files to Modify
+## Issue 4: Quick Presets Don't Apply Formatting or Placeholders
+
+**Problem:** Clicking "Item Name (Bold)" or "Location (Small)" just adds generic "New Text" instead of:
+- Bold text with `{item_name}` placeholder
+- Smaller text with `{location}` placeholder
+
+**Root Cause:** The preset buttons all call `addElement('text')` which uses the default text element configuration. There's no preset-specific configuration being passed.
+
+**Fix Location:** 
+- `src/components/editor/ElementsPanel.tsx` lines 152-173 (preset buttons)
+- `src/hooks/useLabelEditor.ts` - need to extend `addElement` to accept preset options
+
+**Solution:** 
+1. Extend the `addElement` function to accept an optional preset configuration
+2. Create preset configurations for each Quick Preset:
+   - **Item Name (Bold):** `{item_name}` content, bold font, larger size (14pt)
+   - **Location (Small):** `{location}` content, normal font, smaller size (9pt)
+   - **QR to Item:** Already works (uses default QR data)
+   - **Item ID Barcode:** Already works (uses `{item_id}`)
+
+---
+
+## Issue 5: Backspace Key Should Delete Selected Element
+
+**Problem:** Pressing backspace/delete when an element is selected does nothing.
+
+**Fix Location:** `src/components/editor/LabelCanvas.tsx` or `src/pages/Editor.tsx`
+
+**Solution:** Add a keyboard event listener that:
+- Listens for `Backspace` or `Delete` key
+- Checks if an element is selected
+- Checks that the focus is NOT on an input/textarea (to avoid deleting while typing)
+- Calls `deleteElement(selectedElementId)`
+
+---
+
+## Implementation Summary
 
 | File | Changes |
 |------|---------|
-| `src/pages/Editor.tsx` | Wrap sidebar content in ScrollArea |
-| `src/components/editor/ElementsPanel.tsx` | Remove flex-1, add max-height to layers scroll |
-| `src/components/editor/TemplatesPanel.tsx` | Remove flex-1, add max-height, redesign default buttons as pills |
+| `src/pages/Editor.tsx` | Fix sidebar overflow and z-index stacking |
+| `src/components/editor/LabelCanvas.tsx` | Change zoom indicator from `fixed` to `absolute`, add keyboard delete handler |
+| `src/components/editor/ElementsPanel.tsx` | Rename "Asset ID" to "Item ID", update preset buttons to use custom configs |
+| `src/hooks/useLabelEditor.ts` | Extend `addElement` to accept optional preset configuration |
 
 ---
 
-## Summary
+## Technical Details
 
-1. **Scrolling Fix**: Remove competing `flex-1` from both panels and wrap the entire sidebar in a ScrollArea. Give sub-sections appropriate max-heights for their internal scrolling.
+### 1. Sidebar z-index fix in Editor.tsx
 
-2. **Button Styling**: Replace plain Button components with styled pill toggles using distinct colors (blue for Item, green for Container) and checkmark icons when active.
+```tsx
+// Line 41 - add relative z-10 to ensure sidebar stacks above canvas
+<aside className="w-72 border-r bg-card/50 glass-panel relative z-10">
+```
+
+### 2. Zoom indicator positioning in LabelCanvas.tsx
+
+```tsx
+// Change from fixed to absolute, and position relative to canvas container
+// Move inside the canvas container div instead of the outer container
+<div className="absolute bottom-4 right-4 z-10 px-3 py-1.5 rounded-full bg-card/80 glass-panel text-xs font-medium text-muted-foreground shadow-elevation-md">
+  {zoom}%
+</div>
+```
+
+### 3. Extended addElement function signature
+
+```typescript
+type TextPreset = {
+  content: string;
+  fontSize?: number;
+  bold?: boolean;
+  name?: string;
+};
+
+const addElement = (type: 'text' | 'qrcode' | 'barcode', preset?: TextPreset) => {
+  // Apply preset values if provided
+  if (type === 'text' && preset) {
+    newElement = {
+      ...DEFAULT_TEXT_ELEMENT,
+      id,
+      name: preset.name || `Text ${count}`,
+      position,
+      content: preset.content,
+      font: {
+        ...DEFAULT_TEXT_ELEMENT.font,
+        size: preset.fontSize || 12,
+        bold: preset.bold || false,
+      },
+    };
+  }
+};
+```
+
+### 4. Preset button configurations
+
+```tsx
+// Item Name (Bold)
+onClick={() => addElement('text', { 
+  content: '{item_name}', 
+  fontSize: 14, 
+  bold: true,
+  name: 'Item Name'
+})}
+
+// Location (Small)
+onClick={() => addElement('text', { 
+  content: '{location}', 
+  fontSize: 9, 
+  bold: false,
+  name: 'Location'
+})}
+```
+
+### 5. Keyboard delete handler in LabelCanvas.tsx
+
+```tsx
+useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Only handle if an element is selected
+    if (!selectedElementId) return;
+    
+    // Don't handle if user is typing in an input
+    const activeElement = document.activeElement;
+    if (activeElement?.tagName === 'INPUT' || 
+        activeElement?.tagName === 'TEXTAREA') return;
+    
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      deleteElement(selectedElementId);
+    }
+  };
+  
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [selectedElementId, deleteElement]);
+```
+
+---
+
+## Expected Results
+
+After implementation:
+1. Left sidebar content will be fully visible without clipping
+2. All toolbar buttons will be clickable without interference from the demo banner
+3. "Asset ID Barcode" preset will read "Item ID Barcode"
+4. "Item Name (Bold)" preset will add bold text with `{item_name}` placeholder
+5. "Location (Small)" preset will add smaller text with `{location}` placeholder
+6. Pressing Backspace or Delete will remove the selected element from the canvas
 
