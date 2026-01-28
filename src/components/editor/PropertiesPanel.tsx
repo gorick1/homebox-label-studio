@@ -9,11 +9,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bold, Italic, Type, QrCode, Barcode, Trash2, Copy, Tag, Move, Maximize2 } from 'lucide-react';
-import { FONT_FAMILIES, PLACEHOLDERS, type TextElement, type QRCodeElement, type BarcodeElement } from '@/types/label';
+import { Bold, Italic, Type, QrCode, Barcode, Trash2, Copy, Tag, Move, Maximize2, MapPin, Mail } from 'lucide-react';
+import { FONT_FAMILIES, PLACEHOLDERS, type TextElement, type QRCodeElement, type BarcodeElement, type AddressElement, type IMBarcodeElement } from '@/types/label';
 import { containsPlaceholders } from '@/lib/dymoFormat';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import AddressPropertiesPanel from './AddressPropertiesPanel';
 
 export default function PropertiesPanel() {
   const { 
@@ -44,9 +45,13 @@ export default function PropertiesPanel() {
   const isText = selectedElement.type === 'text';
   const isQRCode = selectedElement.type === 'qrcode';
   const isBarcode = selectedElement.type === 'barcode';
+  const isAddress = selectedElement.type === 'address';
+  const isIMBarcode = selectedElement.type === 'imbarcode';
   const textElement = isText ? (selectedElement as TextElement) : null;
   const qrElement = isQRCode ? (selectedElement as QRCodeElement) : null;
   const barcodeElement = isBarcode ? (selectedElement as BarcodeElement) : null;
+  const addressElement = isAddress ? (selectedElement as AddressElement) : null;
+  const imbElement = isIMBarcode ? (selectedElement as IMBarcodeElement) : null;
 
   const hasPlaceholders = isText 
     ? containsPlaceholders(textElement!.content)
@@ -85,6 +90,8 @@ export default function PropertiesPanel() {
               {isText && <Type className="h-4 w-4" />}
               {isQRCode && <QrCode className="h-4 w-4" />}
               {isBarcode && <Barcode className="h-4 w-4" />}
+              {isAddress && <MapPin className="h-4 w-4" />}
+              {isIMBarcode && <Mail className="h-4 w-4" />}
             </div>
             <span className="font-medium text-sm">{selectedElement.name}</span>
           </div>
@@ -391,6 +398,86 @@ export default function PropertiesPanel() {
                 />
               </div>
             </>
+          )}
+
+          {/* Address properties */}
+          {isAddress && addressElement && (
+            <AddressPropertiesPanel element={addressElement} />
+          )}
+
+          {/* IMBarcode properties */}
+          {isIMBarcode && imbElement && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Intelligent Mail Barcode</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Barcode ID</Label>
+                  <Input
+                    value={imbElement.barcodeId}
+                    onChange={(e) => updateElement(selectedElementId, { barcodeId: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                    maxLength={2}
+                    placeholder="00"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Service Type ID</Label>
+                  <Input
+                    value={imbElement.serviceTypeId}
+                    onChange={(e) => updateElement(selectedElementId, { serviceTypeId: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                    maxLength={3}
+                    placeholder="001"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Mailer ID</Label>
+                  <Input
+                    value={imbElement.mailerId}
+                    onChange={(e) => updateElement(selectedElementId, { mailerId: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                    maxLength={9}
+                    placeholder="6 or 9 digits"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Serial Number</Label>
+                  <Input
+                    value={imbElement.serialNumber}
+                    onChange={(e) => updateElement(selectedElementId, { serialNumber: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                    maxLength={9}
+                    placeholder="Auto-generated"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Routing Code (ZIP)</Label>
+                  <Input
+                    value={imbElement.routingCode}
+                    onChange={(e) => updateElement(selectedElementId, { routingCode: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                    maxLength={11}
+                    placeholder="5, 9, or 11 digits"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between py-1">
+                <Label className="text-sm">Show Text Below</Label>
+                <Switch
+                  checked={imbElement.showText}
+                  onCheckedChange={(checked) => updateElement(selectedElementId, { showText: checked })}
+                />
+              </div>
+            </div>
           )}
 
           <Separator className="bg-border/50" />

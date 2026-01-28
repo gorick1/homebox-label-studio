@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { Label, LabelElement, LabelSize, TextElement, QRCodeElement, BarcodeElement, Position, Size, HomeboxItem } from '@/types/label';
+import type { Label, LabelElement, LabelSize, TextElement, QRCodeElement, BarcodeElement, AddressElement, IMBarcodeElement, Position, Size, HomeboxItem, AddressData } from '@/types/label';
 import { LABEL_SIZES } from '@/types/label';
 import { substitutePlaceholders } from '@/lib/dymoFormat';
 import { getSettings, saveSettings, type EditorSettings } from '@/lib/api';
@@ -45,6 +45,44 @@ const DEFAULT_BARCODE_ELEMENT: Omit<BarcodeElement, 'id' | 'name' | 'position'> 
   format: 'code128',
   showText: true,
   size: { width: 1.5, height: 0.4 },
+  locked: false,
+  visible: true,
+};
+
+const DEFAULT_ADDRESS: AddressData = {
+  name: '',
+  street1: '',
+  city: '',
+  state: '',
+  zip5: '',
+};
+
+const DEFAULT_ADDRESS_ELEMENT: Omit<AddressElement, 'id' | 'name' | 'position'> = {
+  type: 'address',
+  address: DEFAULT_ADDRESS,
+  size: { width: 2.5, height: 1 },
+  font: {
+    family: 'Arial',
+    size: 10,
+    bold: false,
+    italic: false,
+    underline: false,
+  },
+  color: { r: 0, g: 0, b: 0, a: 255 },
+  isValidated: false,
+  locked: false,
+  visible: true,
+};
+
+const DEFAULT_IMBARCODE_ELEMENT: Omit<IMBarcodeElement, 'id' | 'name' | 'position'> = {
+  type: 'imbarcode',
+  barcodeId: '00',
+  serviceTypeId: '001',
+  mailerId: '',
+  serialNumber: '',
+  routingCode: '',
+  showText: true,
+  size: { width: 2.5, height: 0.15 },
   locked: false,
   visible: true,
 };
@@ -159,23 +197,34 @@ export function useLabelEditor(initialLabel?: Label) {
     name?: string;
   };
 
-  const addElement = useCallback((type: 'text' | 'qrcode' | 'barcode', preset?: TextPreset) => {
+  type AddressPreset = Partial<AddressData>;
+
+  type IMBarcodePreset = {
+    barcodeId?: string;
+    serviceTypeId?: string;
+    mailerId?: string;
+    serialNumber?: string;
+    routingCode?: string;
+  };
+
+  const addElement = useCallback((type: 'text' | 'qrcode' | 'barcode' | 'address' | 'imbarcode', preset?: TextPreset | AddressPreset | IMBarcodePreset) => {
     const id = generateId();
     const position: Position = { x: 0.1, y: 0.1 };
     
     let newElement: LabelElement;
     
     if (type === 'text') {
+      const textPreset = preset as TextPreset | undefined;
       newElement = {
         ...DEFAULT_TEXT_ELEMENT,
         id,
-        name: preset?.name || `Text ${label.elements.filter(e => e.type === 'text').length + 1}`,
+        name: textPreset?.name || `Text ${label.elements.filter(e => e.type === 'text').length + 1}`,
         position,
-        content: preset?.content || DEFAULT_TEXT_ELEMENT.content,
+        content: textPreset?.content || DEFAULT_TEXT_ELEMENT.content,
         font: {
           ...DEFAULT_TEXT_ELEMENT.font,
-          size: preset?.fontSize || DEFAULT_TEXT_ELEMENT.font.size,
-          bold: preset?.bold ?? DEFAULT_TEXT_ELEMENT.font.bold,
+          size: textPreset?.fontSize || DEFAULT_TEXT_ELEMENT.font.size,
+          bold: textPreset?.bold ?? DEFAULT_TEXT_ELEMENT.font.bold,
         },
       };
     } else if (type === 'qrcode') {
@@ -184,6 +233,31 @@ export function useLabelEditor(initialLabel?: Label) {
         id,
         name: `QR Code ${label.elements.filter(e => e.type === 'qrcode').length + 1}`,
         position,
+      };
+    } else if (type === 'address') {
+      const addressPreset = preset as AddressPreset | undefined;
+      newElement = {
+        ...DEFAULT_ADDRESS_ELEMENT,
+        id,
+        name: `Address ${label.elements.filter(e => e.type === 'address').length + 1}`,
+        position,
+        address: {
+          ...DEFAULT_ADDRESS,
+          ...addressPreset,
+        },
+      };
+    } else if (type === 'imbarcode') {
+      const imbPreset = preset as IMBarcodePreset | undefined;
+      newElement = {
+        ...DEFAULT_IMBARCODE_ELEMENT,
+        id,
+        name: `IMb ${label.elements.filter(e => e.type === 'imbarcode').length + 1}`,
+        position,
+        barcodeId: imbPreset?.barcodeId || DEFAULT_IMBARCODE_ELEMENT.barcodeId,
+        serviceTypeId: imbPreset?.serviceTypeId || DEFAULT_IMBARCODE_ELEMENT.serviceTypeId,
+        mailerId: imbPreset?.mailerId || DEFAULT_IMBARCODE_ELEMENT.mailerId,
+        serialNumber: imbPreset?.serialNumber || DEFAULT_IMBARCODE_ELEMENT.serialNumber,
+        routingCode: imbPreset?.routingCode || DEFAULT_IMBARCODE_ELEMENT.routingCode,
       };
     } else {
       newElement = {

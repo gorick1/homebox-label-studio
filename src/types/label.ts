@@ -1,5 +1,5 @@
 // Label element types
-export type LabelElementType = 'text' | 'qrcode' | 'barcode' | 'rectangle' | 'line';
+export type LabelElementType = 'text' | 'qrcode' | 'barcode' | 'rectangle' | 'line' | 'address' | 'imbarcode';
 
 export interface Position {
   x: number; // inches
@@ -68,7 +68,39 @@ export interface LineElement extends BaseLabelElement {
   strokeWidth: number;
 }
 
-export type LabelElement = TextElement | QRCodeElement | BarcodeElement | RectangleElement | LineElement;
+// Address data structure
+export interface AddressData {
+  name: string;
+  company?: string;
+  street1: string;
+  street2?: string;
+  city: string;
+  state: string;
+  zip5: string;
+  zip4?: string;         // +4 extension (populated by USPS validation)
+  deliveryPoint?: string; // 2-digit delivery point (for IMb)
+  checkDigit?: string;    // Check digit (for IMb)
+}
+
+export interface AddressElement extends BaseLabelElement {
+  type: 'address';
+  address: AddressData;
+  font: FontSettings;
+  color: Color;
+  isValidated: boolean;  // True if address has been validated by USPS
+}
+
+export interface IMBarcodeElement extends BaseLabelElement {
+  type: 'imbarcode';
+  barcodeId: string;      // 2-digit Barcode ID (e.g., "00")
+  serviceTypeId: string;  // 3-digit Service Type ID
+  mailerId: string;       // 6 or 9 digit Mailer ID
+  serialNumber: string;   // Serial number (fills remaining digits)
+  routingCode: string;    // ZIP+4+Delivery Point (from validated address)
+  showText: boolean;      // Show human-readable digits below barcode
+}
+
+export type LabelElement = TextElement | QRCodeElement | BarcodeElement | RectangleElement | LineElement | AddressElement | IMBarcodeElement;
 
 export interface LabelSize {
   id: string;

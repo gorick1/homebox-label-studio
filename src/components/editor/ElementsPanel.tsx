@@ -14,6 +14,8 @@ import {
   Unlock,
   GripVertical,
   Layers,
+  MapPin,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LabelElement } from '@/types/label';
@@ -24,6 +26,8 @@ const ELEMENT_ICONS: Record<string, React.ReactNode> = {
   barcode: <Barcode className="h-4 w-4" />,
   rectangle: <div className="h-4 w-4 border border-current rounded-sm" />,
   line: <div className="h-0.5 w-4 bg-current rounded-full" />,
+  address: <MapPin className="h-4 w-4" />,
+  imbarcode: <Mail className="h-4 w-4" />,
 };
 
 function ElementItem({ element, isSelected }: { element: LabelElement; isSelected: boolean }) {
@@ -143,6 +147,26 @@ export default function ElementsPanel() {
           <Barcode className="h-4 w-4 text-primary" />
           Barcode
         </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 gap-2 bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+            onClick={() => addElement('address')}
+          >
+            <MapPin className="h-4 w-4 text-primary" />
+            Address
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 gap-1.5 text-xs bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+            onClick={() => addElement('imbarcode')}
+          >
+            <Mail className="h-3.5 w-3.5 text-primary" />
+            IMb
+          </Button>
+        </div>
       </div>
 
       {/* Presets */}
