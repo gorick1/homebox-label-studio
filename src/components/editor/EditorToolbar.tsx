@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -151,11 +152,15 @@ export default function EditorToolbar() {
     <header className="h-14 border-b bg-card/80 glass-panel flex items-center px-4 gap-3">
       {/* Logo / Brand */}
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-elevation-sm overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" />
-          <Package className="w-5 h-5 text-primary-foreground relative z-10" />
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-elevation-sm overflow-hidden relative bg-gradient-to-br from-primary to-primary/80">
+          <Package className="w-5 h-5 text-primary-foreground" />
         </div>
         <span className="font-semibold hidden lg:inline text-foreground/90">Label Studio</span>
+        {isDemoMode && (
+          <Badge variant="secondary" className="text-xs">
+            Demo Mode
+          </Badge>
+        )}
       </div>
 
       <Separator orientation="vertical" className="h-6 bg-border/50" />
