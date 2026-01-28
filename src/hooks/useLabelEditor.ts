@@ -152,7 +152,14 @@ export function useLabelEditor(initialLabel?: Label) {
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
 
-  const addElement = useCallback((type: 'text' | 'qrcode' | 'barcode') => {
+  type TextPreset = {
+    content: string;
+    fontSize?: number;
+    bold?: boolean;
+    name?: string;
+  };
+
+  const addElement = useCallback((type: 'text' | 'qrcode' | 'barcode', preset?: TextPreset) => {
     const id = generateId();
     const position: Position = { x: 0.1, y: 0.1 };
     
@@ -162,8 +169,14 @@ export function useLabelEditor(initialLabel?: Label) {
       newElement = {
         ...DEFAULT_TEXT_ELEMENT,
         id,
-        name: `Text ${label.elements.filter(e => e.type === 'text').length + 1}`,
+        name: preset?.name || `Text ${label.elements.filter(e => e.type === 'text').length + 1}`,
         position,
+        content: preset?.content || DEFAULT_TEXT_ELEMENT.content,
+        font: {
+          ...DEFAULT_TEXT_ELEMENT.font,
+          size: preset?.fontSize || DEFAULT_TEXT_ELEMENT.font.size,
+          bold: preset?.bold ?? DEFAULT_TEXT_ELEMENT.font.bold,
+        },
       };
     } else if (type === 'qrcode') {
       newElement = {

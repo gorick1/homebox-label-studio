@@ -38,7 +38,7 @@ function EditorContent() {
       
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar: Elements + Templates */}
-        <aside className="w-72 border-r bg-card/50 glass-panel overflow-hidden">
+        <aside className="w-72 border-r bg-card/50 glass-panel relative z-10">
           <ScrollArea className="h-full">
             <ElementsPanel />
             <TemplatesPanel />
