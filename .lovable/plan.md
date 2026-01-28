@@ -1,188 +1,293 @@
 
 
-## Goal
-Expand the label type selection to include the full range of DYMO LabelWriter labels (~40+ types), and replace the current dropdown with a searchable combobox since there will be many options.
+# Add Address Element with USPS Validation and Intelligent Mail Barcode
+
+## Overview
+
+Add a new **Address** element type to the label editor that supports:
+1. Structured address input (Name, Street 1, Street 2, City, State, ZIP)
+2. USPS Address Validation/Correction via the USPS Web Tools API
+3. Generation of USPS Intelligent Mail Barcode (IMb) from the address
+
+This extends the label maker beyond Homebox inventory labels to general mailing/shipping use cases.
 
 ---
 
-## Current State
+## Technical Architecture
 
-### Label Sizes (`src/types/label.ts`)
-Currently only 5 label sizes:
+### New Element Type: `address`
+
+A new element type that stores structured address data and can display it formatted on the label.
+
 ```typescript
-export const LABEL_SIZES: LabelSize[] = [
-  { id: 'dymo-30334', name: 'DYMO 30334', width: 2.25, height: 1.25 },
-  { id: 'dymo-30252', name: 'DYMO 30252', width: 3.5, height: 1.125 },
-  { id: 'dymo-30336', name: 'DYMO 30336', width: 2.125, height: 1 },
-  { id: 'dymo-30327', name: 'DYMO 30327', width: 3.5, height: 0.875 },
-  { id: 'custom', name: 'Custom', width: 2, height: 1 },
-];
+// In src/types/label.ts
+export interface AddressElement extends BaseLabelElement {
+  type: 'address';
+  address: {
+    name: string;
+    company?: string;
+    street1: string;
+    street2?: string;
+    city: string;
+    state: string;
+    zip5: string;
+    zip4?: string;  // +4 extension (populated by USPS validation)
+    deliveryPoint?: string; // 2-digit delivery point (for IMb)
+    checkDigit?: string;    // Check digit (for IMb)
+  };
+  font: FontSettings;
+  color: Color;
+  isValidated: boolean;  // True if address has been validated by USPS
+}
+
+export interface IMBarcodeElement extends BaseLabelElement {
+  type: 'imbarcode';
+  barcodeId: string;      // 2-digit Barcode ID (e.g., "00")
+  serviceTypeId: string;  // 3-digit Service Type ID
+  mailerId: string;       // 6 or 9 digit Mailer ID
+  serialNumber: string;   // Serial number (fills remaining digits)
+  routingCode: string;    // ZIP+4+Delivery Point (from validated address)
+  showText: boolean;      // Show human-readable digits below barcode
+}
 ```
 
-### Label Size Selector (`src/components/editor/EditorToolbar.tsx`)
-Uses a simple `Select` component - not searchable.
+---
 
-### Print Server Communication
-The `labelToXml()` function in `dymoFormat.ts` already includes width/height in the XML output as twips, which the print proxy receives. This should work automatically with new sizes.
+## USPS Integration
+
+### USPS Web Tools API
+
+The USPS provides free API access for address validation. Requires registration at:
+https://www.usps.com/business/web-tools-apis/
+
+**API Endpoint**: `https://secure.shippingapis.com/ShippingAPI.dll`
+
+**Address Validation Request (XML)**:
+```xml
+<AddressValidateRequest USERID="YOUR_USER_ID">
+  <Address>
+    <FirmName>Company Name</FirmName>
+    <Address1>Suite 100</Address1>
+    <Address2>123 Main Street</Address2>
+    <City>Anytown</City>
+    <State>NY</State>
+    <Zip5>12345</Zip5>
+    <Zip4></Zip4>
+  </Address>
+</AddressValidateRequest>
+```
+
+**Response includes**:
+- Corrected/standardized address
+- ZIP+4 extension
+- Delivery Point (2 digits) - needed for IMb
+- Check digit - needed for IMb
+
+### Edge Function for USPS API
+
+Create an edge function to proxy USPS API calls (keeps API credentials secure):
+
+```typescript
+// supabase/functions/usps-validate/index.ts
+```
+
+Since this project doesn't currently use Supabase, I'll implement this as a configurable API endpoint that can be self-hosted alongside the print proxy.
+
+---
+
+## Intelligent Mail Barcode (IMb)
+
+The IMb is a 65-bar barcode encoding a 31-digit tracking code:
+
+| Field | Digits | Description |
+|-------|--------|-------------|
+| Barcode ID | 2 | Type of mail piece |
+| Service Type ID | 3 | Class of mail |
+| Mailer ID | 6 or 9 | Assigned by USPS |
+| Serial Number | 9 or 6 | Unique piece ID |
+| Routing Code | 0, 5, 9, or 11 | ZIP, ZIP+4, or ZIP+4+DP |
+
+**Total**: 20-31 digits depending on routing code length
+
+### IMb Encoding
+
+The IMb uses a complex encoding scheme:
+1. Convert tracking code to binary
+2. Apply Reed-Solomon error correction
+3. Map to 65 bar patterns (Ascender, Descender, Full, Tracker)
+
+I'll implement a client-side IMb generator in JavaScript, or use an existing library.
 
 ---
 
 ## Implementation Plan
 
-### 1. Expand DYMO Label Sizes Database
-**File:** `src/types/label.ts`
-
-Add comprehensive DYMO LabelWriter label types. I'll also enhance the `LabelSize` interface to include:
-- `category`: Group labels (Address, Shipping, Multi-Purpose, File Folder, etc.)
-- `description`: Brief description of typical use
-
-**New interface:**
-```typescript
-export interface LabelSize {
-  id: string;           // e.g., 'dymo-30334'
-  name: string;         // e.g., 'DYMO 30334'
-  partNumber: string;   // e.g., '30334'
-  width: number;        // inches
-  height: number;       // inches
-  category: string;     // e.g., 'Multi-Purpose'
-  description: string;  // e.g., '2-1/4" x 1-1/4" Medium'
-}
-```
-
-**Full DYMO label range to add (~40 types):**
-
-| Part # | Category | Dimensions | Description |
-|--------|----------|------------|-------------|
-| 30251 | Address | 1-1/8" x 3-1/2" | Standard Address |
-| 30252 | Address | 1-1/8" x 3-1/2" | 2-Up Address |
-| 30253 | Address | 1-1/8" x 3-1/2" | 2-Up Address (Continued) |
-| 30254 | Address | 1-1/8" x 3-1/2" | Clear Address |
-| 30256 | Shipping | 2-5/16" x 4" | Large Shipping |
-| 30258 | Disk | 2-1/4" dia | CD/DVD |
-| 30269 | Shipping | 2-5/16" x 4" | Clear Shipping |
-| 30270 | Address | 1-1/8" x 3-1/2" | White Plastic Address |
-| 30271 | Address | 1-1/8" x 3-1/2" | 2-Up White Plastic |
-| 30277 | File Folder | 9/16" x 3-7/16" | File Folder (Assorted) |
-| 30299 | Jewelry | 7/16" x 2-1/8" | Price Tag / Jewelry |
-| 30320 | Address | 1" x 3-1/2" | Address Labels |
-| 30321 | Address | 1-4/10" x 3-1/2" | Large Address |
-| 30323 | Shipping | 2-1/8" x 4" | Shipping Labels |
-| 30324 | Disk | 2-1/4" dia | CD/DVD Labels |
-| 30326 | VHS | 1-3/16" x 5-7/8" | VHS Spine |
-| 30327 | File Folder | 9/16" x 3-1/2" | File Folder |
-| 30330 | Return Address | 3/4" x 2" | Return Address |
-| 30332 | Multi-Purpose | 1" x 1" | Square |
-| 30333 | Multi-Purpose | 1/2" x 1" | Extra Small |
-| 30334 | Multi-Purpose | 1-1/4" x 2-1/4" | Medium Multi-Purpose |
-| 30335 | Multi-Purpose | 1-1/4" x 2-1/4" | Medium (Continued) |
-| 30336 | Multi-Purpose | 1" x 2-1/8" | Small Multi-Purpose |
-| 30337 | Multi-Purpose | 1/2" x 1" | Audio Cassette |
-| 30339 | Multi-Purpose | 1" x 2-1/8" | (Continued Roll) |
-| 30341 | Name Badge | 2-1/4" x 4" | Name Badge |
-| 30343 | Name Badge | 2-1/4" x 4-1/8" | Name Badge (Clip) |
-| 30345 | Suspension File | 9/16" x 2" | Hanging File Folder |
-| 30346 | Library Barcode | 1/2" x 1-7/8" | Library Book Spine |
-| 30347 | Name Badge | 2-1/4" x 4-1/8" | White Name Badge |
-| 30348 | Name Badge | 2-1/4" x 4-1/8" | Red Name Badge |
-| 30364 | Name Badge | 2-1/4" x 4" | Name Badge w/Clip |
-| 30370 | Postage | 1-3/4" x 1-1/4" | Postage Stamp |
-| 30373 | Postage | 2-5/16" x 10-1/2" | Internet Postage (2-Part) |
-| 30374 | Appointment Card | 2" x 3-1/2" | Appointment Card |
-| 30376 | Hanging Folder | 9/16" x 2" | Hanging File Tab Insert |
-| 30377 | File Folder | 9/16" x 3-7/16" | File Folder (White) |
-| 30378 | Diskette | 2" x 2-3/4" | 3.5" Diskette |
-| 30379 | Diskette | 2-1/8" x 2-3/4" | 5.25" Diskette |
-| 30380 | Multi-Purpose | 1-1/4" x 2-1/4" | Large Multi-Purpose |
-| 30383 | Multi-Purpose | 1" x 3" | PC Postage 3-Part |
-| 30384 | Postage | 2-5/16" x 7-1/2" | 3-Part Internet Postage |
-| 30387 | Postage | 2-5/16" x 7" | Internet Postage Labels |
-
-Plus a **Custom** option at the end for user-defined sizes.
-
----
-
-### 2. Create Searchable Label Size Selector Component
-**New File:** `src/components/editor/LabelSizeSelector.tsx`
-
-Create a dedicated component using the `Command` (cmdk) component that:
-- Shows a search input
-- Groups labels by category
-- Displays part number, dimensions, and description
-- Shows the currently selected label prominently
-
-**UI Design:**
-```text
-┌─────────────────────────────────────┐
-│ 🔍 Search labels...                 │
-├─────────────────────────────────────┤
-│ Multi-Purpose                       │
-│   30334 - 2¼" × 1¼" Medium         │
-│   30336 - 2⅛" × 1" Small           │
-│   30332 - 1" × 1" Square            │
-│ Address                             │
-│   30251 - 3½" × 1⅛" Standard       │
-│   30252 - 3½" × 1⅛" 2-Up           │
-│ Shipping                            │
-│   30256 - 4" × 2⁵⁄₁₆" Large        │
-│ ...                                 │
-├─────────────────────────────────────┤
-│ Custom                              │
-│   Custom - Define your own size     │
-└─────────────────────────────────────┘
-```
-
-Search will filter by:
-- Part number (e.g., "30334")
-- Category (e.g., "address")
-- Description (e.g., "shipping")
-- Dimensions (e.g., "2.25")
-
----
-
-### 3. Update Editor Toolbar
-**File:** `src/components/editor/EditorToolbar.tsx`
-
-Replace the current `Select` component with the new `LabelSizeSelector` popover.
-
----
-
-### 4. Print Server Compatibility
-**No changes needed** - The existing `labelToXml()` function already converts the label size to twips and includes it in the XML:
-```xml
-<Paper width="3240" height="1800">
-```
-
-The print proxy receives this sizing information automatically.
-
----
-
-## Technical Details
-
 ### Files to Create
+
 | File | Purpose |
 |------|---------|
-| `src/components/editor/LabelSizeSelector.tsx` | Searchable combobox for label sizes |
+| `src/lib/uspsApi.ts` | USPS API client for address validation |
+| `src/lib/intelligentMailBarcode.ts` | IMb encoding/generation |
+| `src/components/editor/AddressPropertiesPanel.tsx` | Address-specific properties UI |
 
 ### Files to Modify
+
 | File | Changes |
 |------|---------|
-| `src/types/label.ts` | Expand `LabelSize` interface, add full DYMO label database |
-| `src/components/editor/EditorToolbar.tsx` | Replace Select with LabelSizeSelector |
+| `src/types/label.ts` | Add `AddressElement` and `IMBarcodeElement` types |
+| `src/components/editor/ElementsPanel.tsx` | Add Address and IMb buttons |
+| `src/components/editor/PropertiesPanel.tsx` | Render address properties when selected |
+| `src/components/editor/LabelCanvas.tsx` | Render address text and IMb barcode |
+| `src/hooks/useLabelEditor.ts` | Add address and IMb element creation defaults |
 
 ---
 
-## User Experience
+## User Interface Design
 
-### Before
-- Simple dropdown with 5 options
-- No search capability
-- No grouping or descriptions
+### Elements Panel - New Buttons
 
-### After
-- Searchable popover with ~45 DYMO label types
-- Grouped by category (Address, Shipping, Multi-Purpose, etc.)
-- Shows part number, dimensions, and description
-- Search by part number, category, or dimensions
-- Custom option for non-standard sizes
-- Changing label type automatically adjusts canvas size
+```
+┌────────────────────────────┐
+│ Add Elements               │
+├────────────────────────────┤
+│ [Text] [QR]                │
+│ [Barcode]                  │
+│ [Address] [IMb]  ← NEW     │
+└────────────────────────────┘
+```
+
+### Properties Panel - Address Element Selected
+
+```
+┌────────────────────────────────────┐
+│ Address                            │
+│ ┌────────────────────────────────┐ │
+│ │ [Validate Address] [Gen IMb]   │ │  ← Action buttons
+│ └────────────────────────────────┘ │
+├────────────────────────────────────┤
+│ Recipient                          │
+│ ┌────────────────────────────────┐ │
+│ │ John Smith                     │ │
+│ └────────────────────────────────┘ │
+│ Company (optional)                 │
+│ ┌────────────────────────────────┐ │
+│ │                                │ │
+│ └────────────────────────────────┘ │
+│ Street Address                     │
+│ ┌────────────────────────────────┐ │
+│ │ 123 Main Street                │ │
+│ └────────────────────────────────┘ │
+│ Address Line 2                     │
+│ ┌────────────────────────────────┐ │
+│ │ Apt 4B                         │ │
+│ └────────────────────────────────┘ │
+│ ┌──────────┐ ┌────┐ ┌───────────┐ │
+│ │ City     │ │ ST │ │ ZIP       │ │
+│ └──────────┘ └────┘ └───────────┘ │
+├────────────────────────────────────┤
+│ ✓ Validated (ZIP+4: 12345-6789)   │  ← Status indicator
+└────────────────────────────────────┘
+```
+
+### "Validate Address" Button Behavior
+
+1. User clicks "Validate Address"
+2. Shows loading spinner
+3. Calls USPS API (via edge function or configured endpoint)
+4. On success:
+   - Updates address fields with corrected values
+   - Populates ZIP+4 and delivery point
+   - Shows green checkmark "Validated"
+5. On error:
+   - Shows error message (address not found, ambiguous, etc.)
+   - Suggests corrections if available
+
+### "Generate IMb" Button Behavior
+
+1. Only enabled if address is validated (has ZIP+4 and delivery point)
+2. Opens dialog for IMb configuration:
+   - Barcode ID (dropdown with common values)
+   - Service Type ID (dropdown)
+   - Mailer ID (text input - user enters their USPS-assigned ID)
+   - Serial Number (auto-generated or manual)
+3. Generates IMb element and adds it to the label
+
+---
+
+## Canvas Rendering
+
+### Address Element Rendering
+
+Renders formatted address block:
+```
+John Smith
+123 Main Street
+Apt 4B
+Anytown, NY 12345-6789
+```
+
+### IMb Rendering
+
+Draws the 65-bar pattern using 4 bar types:
+- **Ascender (A)**: Top half bar
+- **Descender (D)**: Bottom half bar
+- **Full (F)**: Full height bar
+- **Tracker (T)**: Center tick only
+
+The bars are drawn with precise spacing per USPS specifications.
+
+---
+
+## API Configuration
+
+Since this project is self-hosted without Supabase, USPS API credentials will be configured via:
+
+1. **Environment variable** or **settings panel**:
+   ```typescript
+   // In src/lib/api.ts
+   const API_CONFIG = {
+     // ... existing config
+     uspsUserId: process.env.USPS_USER_ID || localStorage.getItem('usps_user_id'),
+   };
+   ```
+
+2. **Settings panel** to enter USPS User ID:
+   - Add a new section in EditorSettingsPanel
+   - Store in localStorage for persistence
+   - Required before validation feature works
+
+---
+
+## Implementation Order
+
+1. **Phase 1: Types and Data Model**
+   - Add `AddressElement` and `IMBarcodeElement` to `types/label.ts`
+   - Update `useLabelEditor.ts` with default address/IMb elements
+
+2. **Phase 2: UI Components**
+   - Add Address and IMb buttons to `ElementsPanel.tsx`
+   - Create address properties section in `PropertiesPanel.tsx`
+   - Add USPS User ID field to `EditorSettingsPanel.tsx`
+
+3. **Phase 3: Canvas Rendering**
+   - Add address text rendering to `LabelCanvas.tsx`
+   - Implement IMb barcode drawing
+
+4. **Phase 4: USPS Integration**
+   - Create `src/lib/uspsApi.ts` for address validation
+   - Implement validation flow with loading states
+
+5. **Phase 5: IMb Generation**
+   - Create `src/lib/intelligentMailBarcode.ts`
+   - Implement full IMb encoding algorithm
+   - Add IMb generation dialog/flow
+
+---
+
+## Notes
+
+- **USPS API Registration**: Users will need to register for free USPS Web Tools API access
+- **Self-hosted**: All API calls go through a proxy to keep credentials secure
+- **Offline**: Address elements work offline; validation requires network
+- **No Supabase dependency**: Uses same architecture as existing print/API endpoints
 
