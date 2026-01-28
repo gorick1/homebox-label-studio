@@ -1,8 +1,10 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useLabelEditorContext } from '@/contexts/LabelEditorContext';
-import type { LabelElement, Position, Size } from '@/types/label';
+import type { LabelElement, Position, Size, AddressElement, IMBarcodeElement } from '@/types/label';
 import { cn } from '@/lib/utils';
 import QRCode from 'qrcode';
+import { formatAddressForLabel } from '@/lib/uspsApi';
+import { generateIMBarcode, type BarType } from '@/lib/intelligentMailBarcode';
 
 // Scale: pixels per inch for display
 const PPI = 96;
@@ -212,6 +214,102 @@ export default function LabelCanvas() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
           ctx.fillText(displayData, x + width / 2, y + height);
+          ctx.textAlign = 'left';
+        }
+
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, height);
+      } else if (element.type === 'address') {
+        // Render address element
+        const addressElement = element as AddressElement;
+        const lines = formatAddressForLabel(addressElement.address);
+        
+        ctx.fillStyle = `rgba(${addressElement.color.r}, ${addressElement.color.g}, ${addressElement.color.b}, ${addressElement.color.a / 255})`;
+        ctx.font = `${addressElement.font.italic ? 'italic ' : ''}${addressElement.font.bold ? 'bold ' : ''}${addressElement.font.size * scale}px ${addressElement.font.family}`;
+        ctx.textBaseline = 'top';
+        
+        const lineHeight = addressElement.font.size * scale * 1.3;
+        lines.forEach((line, index) => {
+          ctx.fillText(line, x, y + (index * lineHeight));
+        });
+
+        // Validation indicator
+        if (addressElement.isValidated) {
+          ctx.fillStyle = 'rgba(34, 197, 94, 0.8)';
+          ctx.beginPath();
+          ctx.arc(x + width - 6, y + 6, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (element.type === 'imbarcode') {
+        // Render Intelligent Mail Barcode
+        const imbElement = element as IMBarcodeElement;
+        
+        // Try to generate the barcode
+        const result = generateIMBarcode({
+          barcodeId: imbElement.barcodeId || '00',
+          serviceTypeId: imbElement.serviceTypeId || '001',
+          mailerId: imbElement.mailerId || '123456',
+          serialNumber: imbElement.serialNumber || '123456789',
+          routingCode: imbElement.routingCode || '',
+        });
+
+        // Draw background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, width, height);
+        
+        if (result.success && result.bars) {
+          const barcodeHeight = imbElement.showText ? height * 0.7 : height;
+          const barWidth = width / 70; // 65 bars + spacing
+          const barGap = barWidth * 0.3;
+          
+          ctx.fillStyle = '#000000';
+          
+          result.bars.forEach((barType: BarType, i: number) => {
+            const barX = x + (i * (barWidth + barGap)) + 2;
+            let barY = y;
+            let barH = barcodeHeight;
+            
+            switch (barType) {
+              case 'F': // Full bar
+                barY = y;
+                barH = barcodeHeight;
+                break;
+              case 'A': // Ascender (top)
+                barY = y;
+                barH = barcodeHeight * 0.65;
+                break;
+              case 'D': // Descender (bottom)
+                barY = y + barcodeHeight * 0.35;
+                barH = barcodeHeight * 0.65;
+                break;
+              case 'T': // Tracker (center)
+                barY = y + barcodeHeight * 0.25;
+                barH = barcodeHeight * 0.5;
+                break;
+            }
+            
+            ctx.fillRect(barX, barY, barWidth * 0.7, barH);
+          });
+          
+          // Draw text below if enabled
+          if (imbElement.showText && result.trackingCode) {
+            ctx.fillStyle = '#1f2937';
+            ctx.font = `${8 * scale}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(result.trackingCode, x + width / 2, y + height);
+            ctx.textAlign = 'left';
+          }
+        } else {
+          // Show error state
+          ctx.fillStyle = '#f3f4f6';
+          ctx.fillRect(x, y, width, height);
+          ctx.fillStyle = '#ef4444';
+          ctx.font = `${10 * scale}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('IMb Config Needed', x + width / 2, y + height / 2);
           ctx.textAlign = 'left';
         }
 

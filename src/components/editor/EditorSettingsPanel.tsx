@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   Sheet,
   SheetContent,
@@ -8,7 +10,8 @@ import {
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, ExternalLink } from 'lucide-react';
+import { getUspsUserId, setUspsUserId, removeUspsUserId } from '@/lib/uspsApi';
 
 interface EditorSettings {
   autoprint: boolean;
@@ -24,6 +27,14 @@ interface EditorSettingsPanelProps {
 }
 
 export default function EditorSettingsPanel({ open, onOpenChange, settings, onSettingsChange }: EditorSettingsPanelProps) {
+  const [uspsUserId, setUspsUserIdState] = useState(getUspsUserId() || '');
+
+  useEffect(() => {
+    if (open) {
+      setUspsUserIdState(getUspsUserId() || '');
+    }
+  }, [open]);
+
   const handleAutoprintChange = (checked: boolean) => {
     onSettingsChange({ ...settings, autoprint: checked });
   };
@@ -36,12 +47,22 @@ export default function EditorSettingsPanel({ open, onOpenChange, settings, onSe
     onSettingsChange({ ...settings, showGrid: checked });
   };
 
+  const handleUspsUserIdChange = (value: string) => {
+    setUspsUserIdState(value);
+    if (value.trim()) {
+      setUspsUserId(value.trim());
+    } else {
+      removeUspsUserId();
+    }
+  };
+
   const handleResetSettings = () => {
     onSettingsChange({
       autoprint: false,
       snapToGrid: true,
       showGrid: true,
     });
+    handleUspsUserIdChange('');
   };
 
   return (
@@ -105,6 +126,37 @@ export default function EditorSettingsPanel({ open, onOpenChange, settings, onSe
                 id="snap-to-grid"
                 checked={settings.snapToGrid}
                 onCheckedChange={handleSnapToGridChange}
+              />
+            </div>
+          </div>
+
+          {/* USPS Settings */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold">USPS Integration</h3>
+            <div className="space-y-2">
+              <Label 
+                htmlFor="usps-user-id" 
+                className="text-sm font-normal"
+              >
+                USPS Web Tools User ID
+                <p className="text-xs text-muted-foreground mt-1">
+                  Required for address validation. Get your free API key at{' '}
+                  <a 
+                    href="https://www.usps.com/business/web-tools-apis/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    USPS Web Tools <ExternalLink className="h-3 w-3" />
+                  </a>
+                </p>
+              </Label>
+              <Input
+                id="usps-user-id"
+                value={uspsUserId}
+                onChange={(e) => handleUspsUserIdChange(e.target.value)}
+                placeholder="Enter your USPS User ID"
+                className="h-9"
               />
             </div>
           </div>
