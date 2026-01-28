@@ -1,201 +1,89 @@
 
-
-# Fix UI Issues and Add Keyboard Delete
-
-## Issues Identified
-
-Based on the code review and your description, there are **5 issues** to fix:
+## Goal
+Fix two UI issues in the Editor screen:
+1) The “Demo Mode” (blue) banner at the top is overlapping / blocking toolbar interactions.
+2) The left sidebar (Add Elements → Templates) content is still getting visually cut off near the canvas.
 
 ---
 
-## Issue 1: Left Sidebar Cut Off Near Canvas
+## What I found in the code
+### Current Editor layout (`src/pages/Editor.tsx`)
+- Demo banner is rendered above the toolbar in normal document flow (not fixed/sticky).
+- The main editor row uses `overflow-hidden`.
+- Left sidebar uses:
+  - `relative z-10 overflow-hidden`
+  - a `ScrollArea` that is `h-full`
+- The shared `ScrollArea` component (`src/components/ui/scroll-area.tsx`) uses `overflow-hidden` on the Root and the scrollbar is rendered on top of the viewport area (Radix custom scrollbar). This can visually “cover” the right edge of content if content sits flush to the right.
 
-**Problem:** The left sidebar content gets visually cut off or obscured as it extends toward the canvas area.
+### Why the left sidebar can look “cut off”
+There are two common causes that match your description:
+1) **Scrollbar overlay**: Radix’s vertical scrollbar can sit on top of content at the right edge, making the last few pixels of text/buttons appear clipped.
+2) **Stacking/overlap near the canvas**: If any canvas/center content ends up painting above the sidebar (z-index stacking context), the sidebar’s right edge can look like it’s being “covered”.
 
-**Root Cause:** The `overflow-hidden` class on the sidebar `<aside>` element (line 41 in Editor.tsx) combined with internal scrolling may be causing clipping issues. Additionally, the z-index stacking may need adjustment.
-
-**Fix Location:** `src/pages/Editor.tsx` line 41
-
-**Solution:** 
-- Remove `overflow-hidden` from the aside and let the ScrollArea handle overflow
-- Ensure proper z-index ordering so sidebar appears above any canvas overflow
-
----
-
-## Issue 2: Blue Demo Mode Banner Blocking Toolbar Buttons
-
-**Problem:** The demo mode banner at the top is preventing interaction with toolbar buttons.
-
-**Root Cause:** The demo mode banner (lines 25-34 in Editor.tsx) may have z-index or pointer-event issues, OR the zoom indicator (line 473 in LabelCanvas.tsx) which uses `fixed` positioning with `z-10` may be overlapping the toolbar area.
-
-**Fix Location:** 
-- `src/components/editor/LabelCanvas.tsx` line 473 - change the zoom indicator positioning
-- Potentially add `relative z-0` to main content area
-
-**Solution:**
-- Change the zoom indicator from `fixed` to `absolute` positioning within the canvas container
-- Ensure proper stacking context so banner and toolbar don't interfere
+### Why the demo banner can block toolbar clicks
+Even if the banner is visually above the toolbar, in some viewport/responsive states it can end up overlapping the toolbar’s click area (e.g., if layout wraps or if something becomes positioned/sticky elsewhere). The safest fix is to:
+- Ensure the header region has a clear stacking order above everything else.
+- Ensure the banner doesn’t intercept pointer events outside its own content.
 
 ---
 
-## Issue 3: Rename "Asset ID Barcode" to "Item ID Barcode"
+## Implementation plan (targeted, minimal changes)
 
-**Problem:** The Quick Presets section shows "Asset ID Barcode" but it actually uses `{item_id}`.
+### 1) Make the top region “always on top” and never block toolbar buttons
+**File:** `src/pages/Editor.tsx`
 
-**Fix Location:** `src/components/editor/ElementsPanel.tsx` line 194
+- Wrap the Demo banner + `EditorToolbar` in a single header container that establishes a stacking context, e.g.:
+  - `relative z-50` (or similar) so it’s always above the canvas area.
+- Add `pointer-events-none` to the *banner container* so it cannot steal clicks from the toolbar if any overlap occurs.
+  - If we ever add links/buttons inside the banner later, we can selectively re-enable with `pointer-events-auto` on those specific children.
 
-**Solution:** Change the label text from "Asset ID Barcode" to "Item ID Barcode"
-
----
-
-## Issue 4: Quick Presets Don't Apply Formatting or Placeholders
-
-**Problem:** Clicking "Item Name (Bold)" or "Location (Small)" just adds generic "New Text" instead of:
-- Bold text with `{item_name}` placeholder
-- Smaller text with `{location}` placeholder
-
-**Root Cause:** The preset buttons all call `addElement('text')` which uses the default text element configuration. There's no preset-specific configuration being passed.
-
-**Fix Location:** 
-- `src/components/editor/ElementsPanel.tsx` lines 152-173 (preset buttons)
-- `src/hooks/useLabelEditor.ts` - need to extend `addElement` to accept preset options
-
-**Solution:** 
-1. Extend the `addElement` function to accept an optional preset configuration
-2. Create preset configurations for each Quick Preset:
-   - **Item Name (Bold):** `{item_name}` content, bold font, larger size (14pt)
-   - **Location (Small):** `{location}` content, normal font, smaller size (9pt)
-   - **QR to Item:** Already works (uses default QR data)
-   - **Item ID Barcode:** Already works (uses `{item_id}`)
+Result:
+- Even if there’s a layout overlap, the banner won’t block toolbar clicks.
+- The whole header region stays above the editor body visually and interactively.
 
 ---
 
-## Issue 5: Backspace Key Should Delete Selected Element
+### 2) Fix left sidebar “cut off near canvas” by preventing right-edge overlay and improving stacking
+**File:** `src/pages/Editor.tsx`
 
-**Problem:** Pressing backspace/delete when an element is selected does nothing.
+Do two things:
 
-**Fix Location:** `src/components/editor/LabelCanvas.tsx` or `src/pages/Editor.tsx`
+#### 2a) Ensure sidebar stacks above center canvas
+- Increase left sidebar stacking from `z-10` to a higher value (e.g. `z-20` or `z-30`)
+- Ensure the center `<main>` establishes a lower stacking context (e.g. `relative z-0`)
+This prevents any canvas-layered elements from visually covering the sidebar edge.
 
-**Solution:** Add a keyboard event listener that:
-- Listens for `Backspace` or `Delete` key
-- Checks if an element is selected
-- Checks that the focus is NOT on an input/textarea (to avoid deleting while typing)
-- Calls `deleteElement(selectedElementId)`
+#### 2b) Add right padding inside the sidebar scroll viewport (avoid scrollbar covering content)
+Because Radix ScrollArea’s scrollbar can overlay content, we’ll add a small right padding inside the ScrollArea content for the left sidebar only:
+- Inside the `<ScrollArea>`, wrap sidebar panels in a container like:
+  - `<div className="pr-3"> ... </div>`
+This ensures text/buttons don’t render under the vertical scrollbar or get “shaved off” at the right edge.
 
----
-
-## Implementation Summary
-
-| File | Changes |
-|------|---------|
-| `src/pages/Editor.tsx` | Fix sidebar overflow and z-index stacking |
-| `src/components/editor/LabelCanvas.tsx` | Change zoom indicator from `fixed` to `absolute`, add keyboard delete handler |
-| `src/components/editor/ElementsPanel.tsx` | Rename "Asset ID" to "Item ID", update preset buttons to use custom configs |
-| `src/hooks/useLabelEditor.ts` | Extend `addElement` to accept optional preset configuration |
+Important: This is scoped to the left sidebar only (does not change global ScrollArea behavior everywhere else).
 
 ---
 
-## Technical Details
-
-### 1. Sidebar z-index fix in Editor.tsx
-
-```tsx
-// Line 41 - add relative z-10 to ensure sidebar stacks above canvas
-<aside className="w-72 border-r bg-card/50 glass-panel relative z-10">
-```
-
-### 2. Zoom indicator positioning in LabelCanvas.tsx
-
-```tsx
-// Change from fixed to absolute, and position relative to canvas container
-// Move inside the canvas container div instead of the outer container
-<div className="absolute bottom-4 right-4 z-10 px-3 py-1.5 rounded-full bg-card/80 glass-panel text-xs font-medium text-muted-foreground shadow-elevation-md">
-  {zoom}%
-</div>
-```
-
-### 3. Extended addElement function signature
-
-```typescript
-type TextPreset = {
-  content: string;
-  fontSize?: number;
-  bold?: boolean;
-  name?: string;
-};
-
-const addElement = (type: 'text' | 'qrcode' | 'barcode', preset?: TextPreset) => {
-  // Apply preset values if provided
-  if (type === 'text' && preset) {
-    newElement = {
-      ...DEFAULT_TEXT_ELEMENT,
-      id,
-      name: preset.name || `Text ${count}`,
-      position,
-      content: preset.content,
-      font: {
-        ...DEFAULT_TEXT_ELEMENT.font,
-        size: preset.fontSize || 12,
-        bold: preset.bold || false,
-      },
-    };
-  }
-};
-```
-
-### 4. Preset button configurations
-
-```tsx
-// Item Name (Bold)
-onClick={() => addElement('text', { 
-  content: '{item_name}', 
-  fontSize: 14, 
-  bold: true,
-  name: 'Item Name'
-})}
-
-// Location (Small)
-onClick={() => addElement('text', { 
-  content: '{location}', 
-  fontSize: 9, 
-  bold: false,
-  name: 'Location'
-})}
-```
-
-### 5. Keyboard delete handler in LabelCanvas.tsx
-
-```tsx
-useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
-    // Only handle if an element is selected
-    if (!selectedElementId) return;
-    
-    // Don't handle if user is typing in an input
-    const activeElement = document.activeElement;
-    if (activeElement?.tagName === 'INPUT' || 
-        activeElement?.tagName === 'TEXTAREA') return;
-    
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      e.preventDefault();
-      deleteElement(selectedElementId);
-    }
-  };
-  
-  window.addEventListener('keydown', handleKeyDown);
-  return () => window.removeEventListener('keydown', handleKeyDown);
-}, [selectedElementId, deleteElement]);
-```
+### 3) Re-verify in multiple viewport sizes
+After changes, I’ll validate in:
+- Desktop width (your typical editor use)
+- Narrower widths where toolbar might wrap
+- With Demo Mode enabled (banner visible)
+Checks:
+- Toolbar buttons clickable (Undo/Redo/Zoom/Print/Download/User menu)
+- No visual clipping on the right edge of the left sidebar (Add Elements buttons, Quick Presets, Layers, Templates)
+- Sidebar still scrolls correctly
 
 ---
 
-## Expected Results
+## Files to change
+1) `src/pages/Editor.tsx`
+- Add a high z-index header wrapper for banner + toolbar
+- Make banner `pointer-events-none`
+- Adjust stacking: sidebar z-index up, main z-index down
+- Add `pr-*` wrapper inside sidebar ScrollArea to prevent right-edge clipping
 
-After implementation:
-1. Left sidebar content will be fully visible without clipping
-2. All toolbar buttons will be clickable without interference from the demo banner
-3. "Asset ID Barcode" preset will read "Item ID Barcode"
-4. "Item Name (Bold)" preset will add bold text with `{item_name}` placeholder
-5. "Location (Small)" preset will add smaller text with `{location}` placeholder
-6. Pressing Backspace or Delete will remove the selected element from the canvas
+---
 
+## Expected outcome
+- Demo banner never blocks any toolbar buttons (even if overlap happens).
+- Left sidebar content no longer appears cut off as it approaches the canvas; text/buttons have comfortable right padding and proper layering.
