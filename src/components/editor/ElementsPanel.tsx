@@ -13,6 +13,7 @@ import {
   Lock,
   Unlock,
   GripVertical,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LabelElement } from '@/types/label';
@@ -21,8 +22,8 @@ const ELEMENT_ICONS: Record<string, React.ReactNode> = {
   text: <Type className="h-4 w-4" />,
   qrcode: <QrCode className="h-4 w-4" />,
   barcode: <Barcode className="h-4 w-4" />,
-  rectangle: <div className="h-4 w-4 border border-current" />,
-  line: <div className="h-0.5 w-4 bg-current" />,
+  rectangle: <div className="h-4 w-4 border border-current rounded-sm" />,
+  line: <div className="h-0.5 w-4 bg-current rounded-full" />,
 };
 
 function ElementItem({ element, isSelected }: { element: LabelElement; isSelected: boolean }) {
@@ -31,20 +32,23 @@ function ElementItem({ element, isSelected }: { element: LabelElement; isSelecte
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors",
+        "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
         isSelected 
-          ? "bg-primary/10 text-primary" 
-          : "hover:bg-muted"
+          ? "bg-primary/10 text-primary shadow-sm border border-primary/20" 
+          : "hover:bg-accent/50 border border-transparent"
       )}
       onClick={() => setSelectedElementId(element.id)}
     >
-      <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab" />
+      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 opacity-0 group-hover:opacity-100 cursor-grab transition-opacity" />
       
-      <span className="text-muted-foreground">
+      <span className={cn(
+        "flex items-center justify-center w-6 h-6 rounded-md",
+        isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+      )}>
         {ELEMENT_ICONS[element.type]}
       </span>
       
-      <span className="flex-1 text-sm truncate">
+      <span className="flex-1 text-sm font-medium truncate">
         {element.name}
       </span>
       
@@ -52,7 +56,7 @@ function ElementItem({ element, isSelected }: { element: LabelElement; isSelecte
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 hover:bg-accent"
           onClick={(e) => {
             e.stopPropagation();
             updateElement(element.id, { visible: !element.visible });
@@ -67,7 +71,7 @@ function ElementItem({ element, isSelected }: { element: LabelElement; isSelecte
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 hover:bg-accent"
           onClick={(e) => {
             e.stopPropagation();
             updateElement(element.id, { locked: !element.locked });
@@ -82,7 +86,7 @@ function ElementItem({ element, isSelected }: { element: LabelElement; isSelecte
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-destructive"
+          className="h-6 w-6 text-destructive hover:bg-destructive/10"
           onClick={(e) => {
             e.stopPropagation();
             deleteElement(element.id);
@@ -99,87 +103,94 @@ export default function ElementsPanel() {
   const { label, selectedElementId, addElement } = useLabelEditorContext();
 
   return (
-    <div className="w-64 border-r bg-background flex flex-col">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b">
-        <h2 className="font-semibold text-sm">Elements</h2>
+      <div className="p-4 border-b bg-card/50">
+        <div className="flex items-center gap-2">
+          <Plus className="h-4 w-4 text-primary" />
+          <h2 className="font-semibold text-sm">Add Elements</h2>
+        </div>
       </div>
 
-      {/* Quick Add */}
-      <div className="p-3 border-b space-y-2">
-        <p className="text-xs text-muted-foreground mb-2">Add Element</p>
-        <div className="flex gap-2">
+      {/* Quick Add Buttons */}
+      <div className="p-4 space-y-3 border-b">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 gap-1.5"
+            className="h-10 gap-2 bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
             onClick={() => addElement('text')}
           >
-            <Type className="h-4 w-4" />
+            <Type className="h-4 w-4 text-primary" />
             Text
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 gap-1.5"
+            className="h-10 gap-2 bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
             onClick={() => addElement('qrcode')}
           >
-            <QrCode className="h-4 w-4" />
-            QR
+            <QrCode className="h-4 w-4 text-primary" />
+            QR Code
           </Button>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="w-full gap-1.5"
+          className="w-full h-10 gap-2 bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
           onClick={() => addElement('barcode')}
         >
-          <Barcode className="h-4 w-4" />
+          <Barcode className="h-4 w-4 text-primary" />
           Barcode
         </Button>
       </div>
 
       {/* Presets */}
-      <div className="p-3 border-b">
-        <p className="text-xs text-muted-foreground mb-2">Quick Presets</p>
+      <div className="p-4 border-b">
+        <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Quick Presets</p>
         <div className="space-y-1">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 h-8"
-            onClick={() => {
-              // This would add a pre-configured element
-              addElement('text');
-            }}
+            className="w-full justify-start gap-2.5 h-9 hover:bg-accent/50"
+            onClick={() => addElement('text')}
           >
-            <Type className="h-3.5 w-3.5" />
+            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
+              <Type className="h-3 w-3" />
+            </div>
             <span className="text-xs">Item Name (Bold)</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 h-8"
+            className="w-full justify-start gap-2.5 h-9 hover:bg-accent/50"
             onClick={() => addElement('text')}
           >
-            <Type className="h-3.5 w-3.5" />
+            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
+              <Type className="h-3 w-3" />
+            </div>
             <span className="text-xs">Location (Small)</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 h-8"
+            className="w-full justify-start gap-2.5 h-9 hover:bg-accent/50"
             onClick={() => addElement('qrcode')}
           >
-            <QrCode className="h-3.5 w-3.5" />
+            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
+              <QrCode className="h-3 w-3" />
+            </div>
             <span className="text-xs">QR to Item</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 h-8"
+            className="w-full justify-start gap-2.5 h-9 hover:bg-accent/50"
             onClick={() => addElement('barcode')}
           >
-            <Barcode className="h-3.5 w-3.5" />
+            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
+              <Barcode className="h-3 w-3" />
+            </div>
             <span className="text-xs">Asset ID Barcode</span>
           </Button>
         </div>
@@ -187,18 +198,22 @@ export default function ElementsPanel() {
 
       <Separator />
 
-      {/* Elements List */}
-      <div className="flex-1 overflow-hidden">
-        <div className="p-3 pb-0">
-          <p className="text-xs text-muted-foreground">
+      {/* Elements List / Layers */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="p-4 pb-2 flex items-center gap-2">
+          <Layers className="h-4 w-4 text-muted-foreground" />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Layers ({label.elements.length})
           </p>
         </div>
-        <ScrollArea className="h-full">
-          <div className="p-2 space-y-0.5">
+        <ScrollArea className="flex-1">
+          <div className="px-3 pb-3 space-y-1">
             {label.elements.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                <p>No elements yet</p>
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-muted/50 flex items-center justify-center">
+                  <Layers className="h-6 w-6 text-muted-foreground/50" />
+                </div>
+                <p className="font-medium">No elements yet</p>
                 <p className="text-xs mt-1">Add elements using the buttons above</p>
               </div>
             ) : (

@@ -51,7 +51,7 @@ export default function EditorToolbar() {
     setEditorSettings,
   } = useLabelEditorContext();
   
-  const { logout } = useAuth();
+  const { logout, isDemoMode } = useAuth();
   const { toast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -64,6 +64,15 @@ export default function EditorToolbar() {
   };
 
   const handlePrint = async () => {
+    if (isDemoMode) {
+      toast({
+        title: "Demo Mode",
+        description: "Printing is disabled in demo mode. Connect to Homebox to print labels.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsPrinting(true);
     try {
       // Get the label canvas and convert to PNG
@@ -139,22 +148,23 @@ export default function EditorToolbar() {
   const zoomPresets = [25, 50, 75, 100, 150, 200, 300, 400];
 
   return (
-    <header className="h-14 border-b bg-background flex items-center px-4 gap-4">
+    <header className="h-14 border-b bg-card/80 glass-panel flex items-center px-4 gap-3">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <Package className="w-5 h-5 text-primary-foreground" />
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-elevation-sm overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80" />
+          <Package className="w-5 h-5 text-primary-foreground relative z-10" />
         </div>
-        <span className="font-semibold hidden sm:inline">Homebox Labels</span>
+        <span className="font-semibold hidden lg:inline text-foreground/90">Label Studio</span>
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 bg-border/50" />
 
       {/* Label Name */}
       <Input
         value={label.name}
         onChange={(e) => setLabelName(e.target.value)}
-        className="w-40 h-8 text-sm"
+        className="w-36 h-8 text-sm bg-background/50 border-border/50"
         placeholder="Label name"
       />
 
@@ -166,10 +176,10 @@ export default function EditorToolbar() {
           if (size) setLabelSize(size);
         }}
       >
-        <SelectTrigger className="w-40 h-8">
+        <SelectTrigger className="w-44 h-8 bg-background/50 border-border/50">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-popover border shadow-elevation-lg">
           {LABEL_SIZES.map((size) => (
             <SelectItem key={size.id} value={size.id}>
               {size.name} ({size.width}" × {size.height}")
@@ -178,23 +188,23 @@ export default function EditorToolbar() {
         </SelectContent>
       </Select>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 bg-border/50" />
 
       {/* Undo/Redo */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-accent/50"
               onClick={undo}
               disabled={!canUndo}
             >
               <Undo2 className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+          <TooltipContent className="bg-popover border shadow-elevation-md">Undo (Ctrl+Z)</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -202,43 +212,43 @@ export default function EditorToolbar() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-accent/50"
               onClick={redo}
               disabled={!canRedo}
             >
               <Redo2 className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+          <TooltipContent className="bg-popover border shadow-elevation-md">Redo (Ctrl+Y)</TooltipContent>
         </Tooltip>
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 bg-border/50" />
 
       {/* Zoom Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-accent/50"
               onClick={() => setZoom(Math.max(25, zoom - 25))}
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Zoom Out</TooltipContent>
+          <TooltipContent className="bg-popover border shadow-elevation-md">Zoom Out</TooltipContent>
         </Tooltip>
 
         <Select
           value={zoom.toString()}
           onValueChange={(value) => setZoom(parseInt(value))}
         >
-          <SelectTrigger className="w-20 h-8">
+          <SelectTrigger className="w-20 h-8 bg-background/50 border-border/50">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-popover border shadow-elevation-lg">
             {zoomPresets.map((z) => (
               <SelectItem key={z} value={z.toString()}>
                 {z}%
@@ -252,13 +262,13 @@ export default function EditorToolbar() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-accent/50"
               onClick={() => setZoom(Math.min(400, zoom + 25))}
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Zoom In</TooltipContent>
+          <TooltipContent className="bg-popover border shadow-elevation-md">Zoom In</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -272,7 +282,7 @@ export default function EditorToolbar() {
               <Grid3X3 className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Toggle Grid</TooltipContent>
+          <TooltipContent className="bg-popover border shadow-elevation-md">Toggle Grid</TooltipContent>
         </Tooltip>
       </div>
 
@@ -298,23 +308,28 @@ export default function EditorToolbar() {
                 {isPreviewMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent className="bg-popover border shadow-elevation-md">
               {isPreviewMode ? 'Showing real data' : 'Show placeholders'}
             </TooltipContent>
           </Tooltip>
         )}
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 bg-border/50" />
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="gap-2" onClick={handleDownload}>
+        <Button variant="outline" size="sm" className="gap-2 h-8 bg-background/50" onClick={handleDownload}>
           <Download className="h-4 w-4" />
           <span className="hidden sm:inline">Download</span>
         </Button>
 
-        <Button size="sm" className="gap-2" onClick={handlePrint} disabled={isPrinting}>
+        <Button 
+          size="sm" 
+          className="gap-2 h-8 shadow-elevation-sm hover:shadow-elevation-md transition-shadow" 
+          onClick={handlePrint} 
+          disabled={isPrinting}
+        >
           {isPrinting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -324,14 +339,14 @@ export default function EditorToolbar() {
         </Button>
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 bg-border/50" />
 
       {/* Settings Sheet */}
       <div>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8"
+          className="h-8 w-8 hover:bg-accent/50"
           onClick={() => setShowSettings(true)}
         >
           <Settings className="h-4 w-4" />
@@ -347,13 +362,13 @@ export default function EditorToolbar() {
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent/50">
             <User className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="bg-popover border shadow-elevation-lg">
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={logout} className="text-destructive">
+          <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
           </DropdownMenuItem>
