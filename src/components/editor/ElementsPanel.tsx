@@ -127,11 +127,11 @@ export default function ElementsPanel() {
           <Button
             variant="outline"
             size="sm"
-            className="h-10 gap-2 bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+            className="h-10 gap-1.5 text-xs bg-background/50 hover:bg-accent/50 hover:border-primary/30 transition-colors"
             onClick={() => addElement('qrcode')}
           >
-            <QrCode className="h-4 w-4 text-primary" />
-            QR Code
+            <QrCode className="h-3.5 w-3.5 text-primary" />
+            QR
           </Button>
         </div>
         <Button
