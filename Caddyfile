@@ -1,0 +1,61 @@
+# Reverse proxy configuration for Homebox services
+# Accept both HTTP (from Cloudflare tunnel) and HTTPS (local)
+# Cloudflare terminates public HTTPS; we just proxy traffic
+
+http://homebox.garrettorick.com {
+  reverse_proxy homebox:7745
+}
+
+http://companion.garrettorick.com {
+  reverse_proxy homebox-companion:8000
+}
+
+http://labels.garrettorick.com {
+  @homebox path /homebox/*
+  handle @homebox {
+    uri strip_prefix /homebox
+    reverse_proxy homebox:7745
+  }
+  reverse_proxy label-designer:80
+}
+
+http://print.garrettorick.com {
+  reverse_proxy homebox-print-addon:8001
+}
+
+https://homebox.garrettorick.com {
+  reverse_proxy homebox:7745
+  tls internal
+}
+
+https://companion.garrettorick.com {
+  reverse_proxy homebox-companion:8000
+  tls internal
+}
+
+https://labels.garrettorick.com {
+  tls internal
+  @homebox path /homebox/*
+  handle @homebox {
+    uri strip_prefix /homebox
+    reverse_proxy homebox:7745
+  }
+  reverse_proxy label-designer:80
+}
+
+https://print.garrettorick.com {
+  reverse_proxy homebox-print-addon:8001
+  tls internal
+}
+
+# Fallback for localhost
+http://localhost {
+  root * /srv
+  file_server
+}
+
+https://localhost {
+  root * /srv
+  file_server
+  tls internal
+}

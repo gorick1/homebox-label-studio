@@ -1,0 +1,18 @@
+version: '3.8'
+
+# Development-only Docker Compose
+# Use this to run just the label designer for local development
+# Run with: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # Label Designer only (for development)
+  label-designer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: label-designer-dev
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8002}

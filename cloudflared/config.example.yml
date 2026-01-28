@@ -1,0 +1,24 @@
+## Example Cloudflared config for Homebox setup
+# Replace <YOUR_TUNNEL_ID> with your tunnel UUID and ensure the credentials file exists at the path below.
+# Copy this file to ~/.cloudflared/config.yml after replacing placeholders.
+
+tunnel: <YOUR_TUNNEL_ID>
+credentials-file: /home/pi/.cloudflared/<YOUR_TUNNEL_ID>.json
+
+ingress:
+  - hostname: homebox.garrettorick.com
+    service: http://caddy:80
+
+  - hostname: companion.garrettorick.com
+    service: http://caddy:80
+
+  - hostname: labels.garrettorick.com
+    service: http://label-designer:8001
+
+  - service: http_status:404
+
+# Notes:
+# - When using Docker, run the cloudflared container on the same Docker network as the other services
+#   (the provided docker-compose.yml in the guide expects `cloudflared` in the `homebox-net` network).
+# - After `cloudflared tunnel create <name>`, a credentials file will be created in ~/.cloudflared.
+#   Use that tunnel ID in the `tunnel:` field above.

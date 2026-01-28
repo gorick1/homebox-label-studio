@@ -1,0 +1,24 @@
+# Cloudflare Tunnel Configuration Template
+# Copy this to ~/.cloudflared/config.yml and update with your values
+
+# Replace with your actual tunnel ID from: cloudflared tunnel list
+tunnel: YOUR_TUNNEL_ID_HERE
+
+# Replace with your actual credentials file path
+credentials-file: /root/.cloudflared/YOUR_TUNNEL_ID_HERE.json
+
+ingress:
+  # Route Homebox service
+  - hostname: homebox.yourdomain.com
+    service: http://localhost:3100
+
+  # Route Companion service
+  - hostname: companion.yourdomain.com
+    service: http://localhost:3101
+
+  # Route Label Designer service
+  - hostname: labels.yourdomain.com
+    service: http://localhost:8001
+
+  # Catch-all rule (required)
+  - service: http_status:404
