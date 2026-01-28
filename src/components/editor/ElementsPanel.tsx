@@ -153,7 +153,12 @@ export default function ElementsPanel() {
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2.5 h-9 hover:bg-accent/50"
-            onClick={() => addElement('text')}
+            onClick={() => addElement('text', { 
+              content: '{item_name}', 
+              fontSize: 14, 
+              bold: true,
+              name: 'Item Name'
+            })}
           >
             <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
               <Type className="h-3 w-3" />
@@ -164,7 +169,12 @@ export default function ElementsPanel() {
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2.5 h-9 hover:bg-accent/50"
-            onClick={() => addElement('text')}
+            onClick={() => addElement('text', { 
+              content: '{location}', 
+              fontSize: 9, 
+              bold: false,
+              name: 'Location'
+            })}
           >
             <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
               <Type className="h-3 w-3" />
@@ -191,7 +201,7 @@ export default function ElementsPanel() {
             <div className="w-5 h-5 rounded bg-muted flex items-center justify-center">
               <Barcode className="h-3 w-3" />
             </div>
-            <span className="text-xs">Asset ID Barcode</span>
+            <span className="text-xs">Item ID Barcode</span>
           </Button>
         </div>
       </div>

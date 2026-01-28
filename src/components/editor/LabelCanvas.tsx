@@ -33,12 +33,34 @@ export default function LabelCanvas() {
     setSelectedElementId,
     moveElement,
     resizeElement,
+    deleteElement,
     zoom,
     showGrid,
     gridSize,
     isPreviewMode,
     getDisplayContent,
   } = useLabelEditorContext();
+
+  // Keyboard delete handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedElementId) return;
+      
+      // Don't handle if user is typing in an input
+      const activeElement = document.activeElement;
+      if (activeElement?.tagName === 'INPUT' || 
+          activeElement?.tagName === 'TEXTAREA' ||
+          (activeElement as HTMLElement)?.isContentEditable) return;
+      
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        deleteElement(selectedElementId);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElementId, deleteElement]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -467,10 +489,10 @@ export default function LabelCanvas() {
   return (
     <div 
       ref={containerRef}
-      className="flex-1 flex items-center justify-center canvas-pattern overflow-auto p-8"
+      className="flex-1 flex items-center justify-center canvas-pattern overflow-auto p-8 relative"
     >
       {/* Zoom indicator */}
-      <div className="fixed bottom-6 right-96 z-10 px-3 py-1.5 rounded-full bg-card/80 glass-panel text-xs font-medium text-muted-foreground shadow-elevation-md">
+      <div className="absolute bottom-4 right-4 z-10 px-3 py-1.5 rounded-full bg-card/80 glass-panel text-xs font-medium text-muted-foreground shadow-elevation-md">
         {zoom}%
       </div>
       
