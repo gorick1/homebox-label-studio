@@ -5,6 +5,7 @@ import type { AddressData } from '@/types/label';
 
 const USPS_API_URL = 'https://secure.shippingapis.com/ShippingAPI.dll';
 const USPS_USER_ID_KEY = 'usps_user_id';
+const MAILER_ID_KEY = 'usps_mailer_id';
 
 export function getUspsUserId(): string | null {
   return localStorage.getItem(USPS_USER_ID_KEY);
@@ -16,6 +17,18 @@ export function setUspsUserId(userId: string): void {
 
 export function removeUspsUserId(): void {
   localStorage.removeItem(USPS_USER_ID_KEY);
+}
+
+export function getMailerId(): string | null {
+  return localStorage.getItem(MAILER_ID_KEY);
+}
+
+export function setMailerId(mailerId: string): void {
+  localStorage.setItem(MAILER_ID_KEY, mailerId);
+}
+
+export function removeMailerId(): void {
+  localStorage.removeItem(MAILER_ID_KEY);
 }
 
 export interface USPSValidationResult {

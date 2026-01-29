@@ -23,7 +23,7 @@ import {
   Info,
 } from 'lucide-react';
 import type { AddressElement } from '@/types/label';
-import { validateAddress, getUspsUserId } from '@/lib/uspsApi';
+import { validateAddress, getUspsUserId, getMailerId } from '@/lib/uspsApi';
 import { 
   generateIMBarcode, 
   buildRoutingCode, 
@@ -46,7 +46,7 @@ export default function AddressPropertiesPanel({ element }: AddressPropertiesPan
   // IMb dialog state
   const [imbBarcodeId, setImbBarcodeId] = useState('00');
   const [imbServiceType, setImbServiceType] = useState('001');
-  const [imbMailerId, setImbMailerId] = useState('');
+  const [imbMailerId, setImbMailerId] = useState(getMailerId() || '');
   const [imbSerialNumber, setImbSerialNumber] = useState('');
 
   const hasUspsConfigured = !!getUspsUserId();

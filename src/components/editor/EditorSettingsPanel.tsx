@@ -11,7 +11,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { RotateCcw, ExternalLink } from 'lucide-react';
-import { getUspsUserId, setUspsUserId, removeUspsUserId } from '@/lib/uspsApi';
+import { getUspsUserId, setUspsUserId, removeUspsUserId, getMailerId, setMailerId, removeMailerId } from '@/lib/uspsApi';
 
 interface EditorSettings {
   autoprint: boolean;
@@ -28,10 +28,12 @@ interface EditorSettingsPanelProps {
 
 export default function EditorSettingsPanel({ open, onOpenChange, settings, onSettingsChange }: EditorSettingsPanelProps) {
   const [uspsUserId, setUspsUserIdState] = useState(getUspsUserId() || '');
+  const [mailerId, setMailerIdState] = useState(getMailerId() || '');
 
   useEffect(() => {
     if (open) {
       setUspsUserIdState(getUspsUserId() || '');
+      setMailerIdState(getMailerId() || '');
     }
   }, [open]);
 
@@ -56,6 +58,17 @@ export default function EditorSettingsPanel({ open, onOpenChange, settings, onSe
     }
   };
 
+  const handleMailerIdChange = (value: string) => {
+    // Only allow digits, max 9
+    const cleaned = value.replace(/\D/g, '').slice(0, 9);
+    setMailerIdState(cleaned);
+    if (cleaned) {
+      setMailerId(cleaned);
+    } else {
+      removeMailerId();
+    }
+  };
+
   const handleResetSettings = () => {
     onSettingsChange({
       autoprint: false,
@@ -63,6 +76,7 @@ export default function EditorSettingsPanel({ open, onOpenChange, settings, onSe
       showGrid: true,
     });
     handleUspsUserIdChange('');
+    handleMailerIdChange('');
   };
 
   return (
@@ -158,6 +172,38 @@ export default function EditorSettingsPanel({ open, onOpenChange, settings, onSe
                 placeholder="Enter your USPS User ID"
                 className="h-9"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label 
+                htmlFor="mailer-id" 
+                className="text-sm font-normal"
+              >
+                Mailer ID
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your 6 or 9 digit USPS-assigned ID for Intelligent Mail Barcodes. Apply at{' '}
+                  <a 
+                    href="https://postalpro.usps.com/mailing/mailer-id" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    USPS PostalPro <ExternalLink className="h-3 w-3" />
+                  </a>
+                </p>
+              </Label>
+              <Input
+                id="mailer-id"
+                value={mailerId}
+                onChange={(e) => handleMailerIdChange(e.target.value)}
+                placeholder="123456 or 123456789"
+                className="h-9 font-mono"
+              />
+              {mailerId && mailerId.length !== 6 && mailerId.length !== 9 && (
+                <p className="text-xs text-destructive">
+                  Mailer ID must be exactly 6 or 9 digits
+                </p>
+              )}
             </div>
           </div>
 
