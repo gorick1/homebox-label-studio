@@ -245,14 +245,19 @@ export default function LabelCanvas() {
         // Render Intelligent Mail Barcode
         const imbElement = element as IMBarcodeElement;
         
+        // Check if we have valid configuration
+        const hasValidConfig = imbElement.mailerId && 
+          (imbElement.mailerId.length === 6 || imbElement.mailerId.length === 9) &&
+          imbElement.serialNumber;
+        
         // Try to generate the barcode
-        const result = generateIMBarcode({
+        const result = hasValidConfig ? generateIMBarcode({
           barcodeId: imbElement.barcodeId || '00',
           serviceTypeId: imbElement.serviceTypeId || '001',
-          mailerId: imbElement.mailerId || '123456',
-          serialNumber: imbElement.serialNumber || '123456789',
+          mailerId: imbElement.mailerId,
+          serialNumber: imbElement.serialNumber,
           routingCode: imbElement.routingCode || '',
-        });
+        }) : { success: false, error: 'Missing configuration' };
 
         // Draw background
         ctx.fillStyle = '#ffffff';

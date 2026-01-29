@@ -4,16 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { 
   MapPin, 
   CheckCircle2, 
@@ -24,13 +14,7 @@ import {
 } from 'lucide-react';
 import type { AddressElement } from '@/types/label';
 import { validateAddress, getUspsUserId, getMailerId } from '@/lib/uspsApi';
-import { 
-  generateIMBarcode, 
-  buildRoutingCode, 
-  SERVICE_TYPE_IDS, 
-  BARCODE_IDS,
-  formatTrackingCode,
-} from '@/lib/intelligentMailBarcode';
+import { buildRoutingCode } from '@/lib/intelligentMailBarcode';
 
 interface AddressPropertiesPanelProps {
   element: AddressElement;
@@ -41,15 +25,9 @@ export default function AddressPropertiesPanel({ element }: AddressPropertiesPan
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
-  const [showIMbDialog, setShowIMbDialog] = useState(false);
-  
-  // IMb dialog state
-  const [imbBarcodeId, setImbBarcodeId] = useState('00');
-  const [imbServiceType, setImbServiceType] = useState('001');
-  const [imbMailerId, setImbMailerId] = useState(getMailerId() || '');
-  const [imbSerialNumber, setImbSerialNumber] = useState('');
 
   const hasUspsConfigured = !!getUspsUserId();
+  const savedMailerId = getMailerId();
 
   const updateAddress = (field: keyof AddressElement['address'], value: string) => {
     if (!selectedElementId) return;
@@ -96,53 +74,39 @@ export default function AddressPropertiesPanel({ element }: AddressPropertiesPan
   };
 
   const handleGenerateIMb = () => {
-    // Build routing code from validated address
+    // Validate mailer ID from settings
+    if (!savedMailerId || (savedMailerId.length !== 6 && savedMailerId.length !== 9)) {
+      setValidationError('Please configure a valid 6 or 9 digit Mailer ID in Settings');
+      return;
+    }
+
+    // Build routing code from address
     const routingCode = buildRoutingCode(
       element.address.zip5,
       element.address.zip4,
       element.address.deliveryPoint
     );
 
-    // Generate serial number if not provided
-    const serial = imbSerialNumber || Math.floor(Math.random() * 999999999).toString().padStart(9, '0');
-    
-    // Validate mailer ID
-    const mailerIdLength = imbMailerId.length;
-    if (mailerIdLength !== 6 && mailerIdLength !== 9) {
-      setValidationError('Mailer ID must be 6 or 9 digits');
-      return;
-    }
+    // Generate serial number based on mailer ID length
+    const serialLength = savedMailerId.length === 6 ? 9 : 6;
+    const serial = Math.floor(Math.random() * Math.pow(10, serialLength))
+      .toString()
+      .padStart(serialLength, '0');
 
-    // Adjust serial number length based on mailer ID
-    const serialLength = mailerIdLength === 6 ? 9 : 6;
-    const adjustedSerial = serial.slice(0, serialLength).padStart(serialLength, '0');
-
-    const result = generateIMBarcode({
-      barcodeId: imbBarcodeId,
-      serviceTypeId: imbServiceType,
-      mailerId: imbMailerId,
-      serialNumber: adjustedSerial,
-      routingCode,
-    });
-
-    if (!result.success) {
-      setValidationError(result.error || 'Failed to generate IMb');
-      return;
-    }
-
-    // Add IMb element to the label
+    // Add IMb element to the label with all config
     addElement('imbarcode', {
-      barcodeId: imbBarcodeId,
-      serviceTypeId: imbServiceType,
-      mailerId: imbMailerId,
-      serialNumber: adjustedSerial,
+      barcodeId: '00',
+      serviceTypeId: '001',
+      mailerId: savedMailerId,
+      serialNumber: serial,
       routingCode,
     });
 
-    setShowIMbDialog(false);
+    setValidationError(null);
   };
 
-  const canGenerateIMb = element.isValidated && element.address.zip5;
+  const hasValidMailerId = savedMailerId && (savedMailerId.length === 6 || savedMailerId.length === 9);
+  const canGenerateIMb = element.address.zip5 && hasValidMailerId;
 
   return (
     <div className="space-y-4">
@@ -169,8 +133,9 @@ export default function AddressPropertiesPanel({ element }: AddressPropertiesPan
           size="sm"
           variant="outline"
           className="flex-1 gap-2"
-          onClick={() => setShowIMbDialog(true)}
+          onClick={handleGenerateIMb}
           disabled={!canGenerateIMb}
+          title={!hasValidMailerId ? 'Configure Mailer ID in Settings first' : !element.address.zip5 ? 'Enter ZIP code first' : undefined}
         >
           <Barcode className="h-4 w-4" />
           Gen IMb
@@ -182,6 +147,15 @@ export default function AddressPropertiesPanel({ element }: AddressPropertiesPan
           <Info className="h-4 w-4 mt-0.5 shrink-0" />
           <p className="text-xs">
             Configure your USPS User ID in Settings to enable address validation.
+          </p>
+        </div>
+      )}
+
+      {!hasValidMailerId && (
+        <div className="flex items-start gap-2 p-2 rounded-md bg-warning/10 text-warning-foreground">
+          <Info className="h-4 w-4 mt-0.5 shrink-0" />
+          <p className="text-xs">
+            Configure your Mailer ID in Settings to generate IMb barcodes.
           </p>
         </div>
       )}
@@ -294,103 +268,6 @@ export default function AddressPropertiesPanel({ element }: AddressPropertiesPan
         </div>
       </div>
 
-      {/* IMb Generation Dialog */}
-      <Dialog open={showIMbDialog} onOpenChange={setShowIMbDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Generate Intelligent Mail Barcode</DialogTitle>
-            <DialogDescription>
-              Configure IMb parameters to generate a USPS Intelligent Mail Barcode for this address.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-sm">Barcode ID</Label>
-              <Select value={imbBarcodeId} onValueChange={setImbBarcodeId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BARCODE_IDS.map((bc) => (
-                    <SelectItem key={bc.id} value={bc.id}>
-                      {bc.id} - {bc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Service Type</Label>
-              <Select value={imbServiceType} onValueChange={setImbServiceType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SERVICE_TYPE_IDS.map((st) => (
-                    <SelectItem key={st.id} value={st.id}>
-                      {st.id} - {st.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Mailer ID (6 or 9 digits)</Label>
-              <Input
-                value={imbMailerId}
-                onChange={(e) => setImbMailerId(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                placeholder="123456 or 123456789"
-                className="font-mono"
-              />
-              <p className="text-xs text-muted-foreground">
-                Your USPS-assigned Mailer ID. Apply at{' '}
-                <a 
-                  href="https://postalpro.usps.com/mailing/mailer-id" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  USPS PostalPro
-                </a>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Serial Number (optional)</Label>
-              <Input
-                value={imbSerialNumber}
-                onChange={(e) => setImbSerialNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                placeholder="Auto-generated if blank"
-                className="font-mono"
-              />
-            </div>
-
-            <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs text-muted-foreground">
-                <strong>Routing Code:</strong>{' '}
-                {buildRoutingCode(element.address.zip5, element.address.zip4, element.address.deliveryPoint) || 'None'}
-              </p>
-              {element.address.deliveryPoint && (
-                <Badge variant="secondary" className="mt-2 text-xs">
-                  Full 11-digit routing (ZIP+4+DP)
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowIMbDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleGenerateIMb} disabled={!imbMailerId || imbMailerId.length < 6}>
-              Generate Barcode
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
